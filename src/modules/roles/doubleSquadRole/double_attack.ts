@@ -100,7 +100,7 @@ const double_attack = function (creep: Creep) {
     }
     if (!creep.memory.boosted) {
         const boosts = ['XGHO2', 'GHO2', 'GO', 'XUH2O', 'UH2O', 'UH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boostCreep(boosts);
+        creep.memory.boosted = creep.boost(boosts);
         return
     }
 

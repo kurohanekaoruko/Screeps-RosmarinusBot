@@ -51,7 +51,7 @@ const double_tough = function (creep: Creep) {
     }
     if(!creep.memory.boosted) {
         const boost = ['XGHO2', 'GHO2', 'GO', 'XLHO2', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boostCreep(boost);
+        creep.memory.boosted = creep.boost(boost);
         return
     }
 

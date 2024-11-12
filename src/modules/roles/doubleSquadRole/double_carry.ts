@@ -18,7 +18,7 @@ const double_carry = function (creep: Creep) {
     }
     if (!creep.memory.boosted) {
         const boosts = ['XGHO2', 'GHO2', 'GO','XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boostCreep(boosts);
+        creep.memory.boosted = creep.boost(boosts);
         return
     }
 

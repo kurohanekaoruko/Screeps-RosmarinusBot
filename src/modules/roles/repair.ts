@@ -71,7 +71,7 @@ const RepairWorkFunc = function (creep: Creep) {
 
 const UnitRepair = {
     prepare: function (creep: Creep) {
-        return creep.boostCreep(['XLH2O', 'LH2O', 'LH']);
+        return creep.boost(['XLH2O', 'LH2O', 'LH']);
     },
     target: function (creep: Creep) {   // 维修
         if(!creep.memory.ready) return false;
@@ -85,6 +85,10 @@ const UnitRepair = {
     source: function (creep: Creep) {   // 获取能量
         if(!creep.memory.ready) return false;
         if(!creep.moveHomeRoom()) return;
+        if(creep.ticksToLive < 50 && creep.body.some(part => part.boost)) {
+            if(creep.unboost()) creep.suicide();
+            return
+        }
         creep.takeEnergy();
         if(creep.store.getFreeCapacity() === 0) {
             creep.say('🚧');

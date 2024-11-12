@@ -55,7 +55,9 @@ interface Room {
     // 返回一个等级, 取决于spawn总容量
     getEffectiveRoomLevel(): number;
     // 生成creep body
-    GenerateBodys(abilityList: any[]): any[]
+    GenerateBodys(abilityList: any[]): any[];
+    // 获取房间内最近的source
+    closestSource(creep: Creep): Source;
 }
 
 interface RoomMemory {

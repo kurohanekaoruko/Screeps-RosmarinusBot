@@ -1,5 +1,10 @@
 interface Creep {
     init(): void;
+
+    takeEnergy(): void;
+    boost(boostTypes: string[]): boolean;
+    unboost(): boolean;
+    double_move(target: any, color?: string): void;
 }
 
 interface CreepMemory {
@@ -19,4 +24,5 @@ interface CreepMemory {
     notified: boolean;
     boosted: boolean;
     squad: string;
+    boostAttempts: any;
 }

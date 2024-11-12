@@ -110,7 +110,7 @@ export default class BaseFunction extends Creep {
                 }
             }
 
-            const targetSource = Game.getObjectById(this.memory.cache.targetSourceId);
+            const targetSource = Game.getObjectById(this.memory.cache.targetSourceId) as Source;
             if (!targetSource || targetSource.energy <= 0) {
                 this.memory.cache.targetSourceId = null;
                 return false;
@@ -134,16 +134,13 @@ export default class BaseFunction extends Creep {
      * @param {Array<string>} boostTypes - 强化的资源类型数组
      * @returns {boolean} - 是否成功强化
      */
-    boostCreep(boostTypes) {
+    boost(boostTypes: Array<string>) {
         // 查找有足够指定资源的lab
-        const labs = this.room.find(FIND_STRUCTURES, {
-            filter: (structure) => {
-                return structure.structureType == STRUCTURE_LAB &&
-                    structure.mineralType &&
-                    boostTypes.includes(structure.mineralType) &&
-                    structure.store[structure.mineralType] >= 30;
-            }
-        });
+        const labs = this.room.lab.filter((lab) => 
+            lab.mineralType &&
+            boostTypes.includes(lab.mineralType) &&
+            lab.store[lab.mineralType] >= 30
+        );
         if(labs.length == 0) return true;
         // 过滤掉对应部件已强化满的lab
         const availableLabs = labs.filter(lab => {
@@ -198,5 +195,23 @@ export default class BaseFunction extends Creep {
         }
         
         return false; // 继续尝试强化
+    }
+    unboost() {
+        if(!this.body.some(part => part.boost)) return false;
+        
+        const labContainer = this.room.container.find((container) => {
+            const lab = this.room.lab.find((lab) => { return container.pos.isNear(lab.pos) });
+            return lab;
+        });
+        if (!labContainer) return false;
+        if (this.pos.isEqual(labContainer.pos)) {
+            const lab = this.room.lab.find((lab) => {
+                return this.pos.isNear(lab.pos) && lab.cooldown == 0;
+            })
+            return lab.unboostCreep(this) === OK;
+        } else {
+            this.moveTo(labContainer, { visualizePathStyle: { stroke: '#ffffff' } });
+            return true;
+        }
     }
 }

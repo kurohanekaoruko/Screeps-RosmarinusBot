@@ -182,7 +182,7 @@ export default {
     market: {
         buy(roomName: any, type: any, amount: any, length=20, show=true, ecost= 10) {
             if (INTERSHARD_RESOURCES.includes(type)) {
-                return global.interShardMarket(type, amount, 'buy', show);
+                return global.interShardMarket(type, amount, 'buy', !!show);
             }
             return handleMarketTransaction(roomName, type, amount, ORDER_SELL, length, show, ecost);
         },
@@ -216,20 +216,20 @@ export default {
         }
 
         if (!bestOrder) {
-            console.log(`没有找到合适的${orderType === ORDER_SELL ? '购买' : '出售'} ${type} 订单`);
+            console.log(`没有找到合适的${orderType === ORDER_SELL ? '出售': '求购'} ${type} 订单`);
             return ERR_NOT_FOUND;
         }
-        console.log(`找到合适的${orderType === ORDER_SELL ? '购买' : '出售'} ${type} 订单：${bestOrder.id} 单价${bestPrice} 订单余量：${bestDealAmount}`);
+        console.log(`找到合适的${orderType === ORDER_SELL ? '出售': '求购'} ${type} 订单：${bestOrder.id} 单价${bestPrice} 订单余量：${bestDealAmount}`);
 
         if(show) return true;
 
         const result = Game.market.deal(bestOrder.id, bestDealAmount);
         if(result === OK){
-            console.log(`成功${orderType === ORDER_SELL ? '购买' : '出售'} ${bestDealAmount} 单位的 ${type}，单价${bestPrice}`);
+            console.log(`成功${orderType === ORDER_SELL ? '购买': '出售'} ${bestDealAmount} 单位的 ${type}，单价${bestPrice}`);
             console.log(`交易金额：${bestDealAmount * bestPrice}`);
         }
         else{
-            console.log(`${orderType === ORDER_SELL ? '购买' : '出售'} ${type} 失败，错误代码：${result}`);
+            console.log(`${orderType === ORDER_SELL ? '购买': '出售'} ${type} 失败，错误代码：${result}`);
         }
         return result;
     },

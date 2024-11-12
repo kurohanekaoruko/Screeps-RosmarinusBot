@@ -60,7 +60,7 @@ const BuildWorkFunc = function (creep: Creep) {
 
 const UnitBuilder = {
     prepare: function (creep: Creep) {
-        return creep.boostCreep(['XLH2O', 'LH2O', 'LH']);
+        return creep.boost(['XLH2O', 'LH2O', 'LH']);
     },
     target: function (creep: Creep) {   // 建造
         if(!creep.memory.ready) return false;

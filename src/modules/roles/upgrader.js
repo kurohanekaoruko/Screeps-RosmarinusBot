@@ -22,7 +22,7 @@ const upgrade = function (creep) {
 const Upgrader = {
     prepare: function (creep) {
         if(creep.room.level == 8) return true;
-        return creep.boostCreep(['XGH2O', 'GH2O', 'GH']);
+        return creep.boost(['XGH2O', 'GH2O', 'GH']);
     },
 
     target: function (creep) {   // 升级控制器
