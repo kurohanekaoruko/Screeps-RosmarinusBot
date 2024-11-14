@@ -2,12 +2,11 @@
 export default {
     room: {
         // 添加房间
-        add(roomName: string, mode: string, layout: string, x: number, y: number) {
+        add(roomName: string, mode: string, layout?: string, x?: number, y?: number) {
             const BOT_NAME = global.BaseConfig.BOT_NAME;
             if(!Memory[BOT_NAME]['rooms'][roomName])
-                Memory[BOT_NAME]['rooms'][roomName] = {
-                    mode: mode ?? 'main',
-                };
+                Memory[BOT_NAME]['rooms'][roomName] = {};
+            Memory[BOT_NAME]['rooms'][roomName].mode = mode ?? 'main';
             if(layout) Memory[BOT_NAME]['rooms'][roomName].layout = layout;
             if(x && y) Memory[BOT_NAME]['rooms'][roomName].center = {x, y};
             console.log(`已添加房间${roomName}。`);
@@ -27,7 +26,7 @@ export default {
         // 设置房间模式
         setmode(roomName: string, mode: string='main') {
             const room = Game.rooms[roomName];
-            if(!room || !room.my || Memory[global.BOT_NAME]['rooms'][roomName]) {
+            if(!room || !room.my || !Memory[global.BOT_NAME]['rooms'][roomName]) {
                 console.log(`房间${roomName}不存在、未拥有或未添加。`);
                 return OK;
             }
@@ -36,9 +35,9 @@ export default {
             return OK;
         },
         // 设置房间布局
-        setlayout(roomName: string, layout: string, x: number, y: number) {
+        setlayout(roomName: string, layout: string, x?: number, y?: number) {
             const room = Game.rooms[roomName];
-            if(!room || !room.my || Memory[global.BOT_NAME]['rooms'][roomName]) {
+            if(!room || !room.my || !Memory[global.BOT_NAME]['rooms'][roomName]) {
                 console.log(`房间${roomName}不存在、未拥有或未添加。`);
                 return;
             }
@@ -50,14 +49,15 @@ export default {
             }
             Memory[global.BOT_NAME]['rooms'][roomName].layout = layout;
             Memory[global.BOT_NAME]['rooms'][roomName].center = { x, y };
-            Memory['rooms'][roomName].centralPos = { x, y };
-            console.log(`已设置 ${roomName} 的布局为 ${layout}, 布局中心为 (${x},${y})。`);
+            if(x && y) Memory['rooms'][roomName].centralPos = { x, y };
+            const pos = Memory['rooms'][roomName].centralPos;
+            console.log(`已设置 ${roomName} 的布局为 ${layout}, 布局中心为 (${pos.x},${pos.y})`);
             return;
         },
         // 设置房间中心
         setcenter(roomName: string, x: number, y: number) {
             const room = Game.rooms[roomName];
-            if(!room || !room.my || Memory[global.BOT_NAME]['rooms'][roomName]) {
+            if(!room || !room.my || !Memory[global.BOT_NAME]['rooms'][roomName]) {
                 console.log(`房间 ${roomName} 不存在、未拥有或未添加。`);
                 return;
             }
@@ -108,46 +108,43 @@ export default {
             const room = Game.rooms[roomName];
             room.memory.labAtype = RESOURCE_ABBREVIATIONS[A] || A;
             room.memory.labBtype = RESOURCE_ABBREVIATIONS[B] || B;
+            console.log(`已设置 ${roomName} 的lab合成底物为 ${A} 和 ${B}。`);
+            return OK;
         },
         // 开启factory
         factoryopen(roomName: string) {
             const room = Game.rooms[roomName];
             room.memory.factory = true;
             console.log(`已开启${roomName}的factory。`);
-            return;
+            return OK;
         },
         // 关闭factory
         factorystop(roomName: string) {
             const room = Game.rooms[roomName];
             room.memory.factory = false;
             console.log(`已关闭${roomName}的factory。`);
-        },
-        // 设置factory生产任务
-        setFactory(roomName: string, res: string) {
-            const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
-            const room = Game.rooms[roomName];
-            room.memory.factoryTask = RESOURCE_ABBREVIATIONS[res] || res;
-            console.log(`已设置${roomName}的factory生产任务为${res}。`);
+            return OK;
         },
         // 设置factory等级
         setFactoryLevel(roomName: string, level: number) {
             const room = Game.rooms[roomName];
             room.memory.factoryLevel = level;
             console.log(`已设置${roomName}的factory等级为${level}。`);
+            return OK;
         },
         // 开启powerSpawn
         psopen(roomName: string) {
             const room = Game.rooms[roomName];
             room.memory.powerSpawn = true;
             console.log(`已开启${roomName}的powerSpawn。`);
-            return;
+            return OK;
         },
         // 关闭powerSpawn
         psstop(roomName: string) {
             const room = Game.rooms[roomName];
             room.memory.powerSpawn = false;
             console.log(`已关闭${roomName}的powerSpawn。`);
-            return;
+            return OK;
         },
         // 孵化powerCreep
         pcspawn(roomName: string, pcname: string) {
@@ -159,7 +156,7 @@ export default {
             else {
                 console.log(`${roomName} 的 powerSpawn 孵化 powerCreep ${pcname} 失败，错误码 ${result}`);
             }
-            return;
+            return OK;
         },
         // 添加中央搬运任务
         addManageTask(roomName: string, source: 's'|'t'|'f'|'l', target: 's'|'t'|'f'|'l', type: string, amount: number) {
@@ -168,7 +165,45 @@ export default {
             const room = Game.rooms[roomName];
             room.ManageMissionAdd(source, target, type, amount);
             console.log(`在房间 ${room.name} 添加了中央搬运任务: 从 ${source} 到 ${target}, 资源类型 ${type}, 数量 ${amount}`);
+            return OK;
         }
+    },
+    autoFactory: {
+        list(roomName: string) {
+            if(roomName) {
+                const autoFactory = Memory[global.BOT_NAME]['autoFactory'][roomName];
+                if(!autoFactory || autoFactory.length == 0) {
+                    console.log(`房间 ${roomName} 没有开启自动factory生产`);
+                }
+                else {
+                    console.log(`房间 ${roomName} 的自动factory生产：${autoFactory}`);
+                }
+                return OK;
+            }
 
-    }
+            const autoFactory = Memory[global.BOT_NAME]['autoFactory'];
+            if(!autoFactory || Object.keys(autoFactory).length == 0) {
+                console.log(`没有房间开启自动factory生产`);
+            }
+            for(const room in autoFactory) {
+                if(!autoFactory[room] || autoFactory[room].length == 0) {
+                    continue;
+                }
+                console.log(`房间 ${room} 的自动factory生产：${autoFactory[room]}`);
+            }
+            return OK;
+        },
+        add(roomName: string, res: string) {
+            const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
+            res = RESOURCE_ABBREVIATIONS[res] || res;
+            Memory[global.BOT_NAME]['autoFactory'][roomName] = res;
+            console.log(`已设置 ${roomName} 的factory自动生产任务为${res}。`);
+            return OK;
+        },
+        remove(roomName: string) {
+            delete Memory[global.BOT_NAME]['autoFactory'][roomName];
+            console.log(`已删除 ${roomName} 的factory自动生产任务。`);
+            return OK;
+        }
+    },
 }

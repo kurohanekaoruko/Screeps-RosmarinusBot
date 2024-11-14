@@ -15,7 +15,7 @@ export default class CreepSpawn extends Room {
 
         // 统计存活的creep
         creeps.forEach(creep => {
-            if (creep.room.name !== this.name || creep.ticksToLive < 20) return;
+            if (creep.room.name !== this.name || creep.ticksToLive < creep.body.length * 3) return;
             const role = creep.memory.role;
             global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
         });
@@ -68,6 +68,9 @@ export default class CreepSpawn extends Room {
             },
             'upgrader': () => {
                 if(global.CreepNum[this.name]['speedup-upgrad'] > 0) return false;
+                if(roomLevel == 8) {
+                    return currentNum < 1 && this.controller.ticksToDowngrade < 190000;
+                }
                 return currentNum < num;
             },
             'transport': () => currentNum < num && this.storage,

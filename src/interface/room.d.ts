@@ -36,8 +36,7 @@ interface Room {
     update(type?: StructureConstant): void;
     // 房间运行
     run(): void;
-    /** 自动市场交易 */
-    autoMarket(): void;
+    
     // Creep数量检查
     CheckCreeps(): void;
     // 处理孵化队列
@@ -64,6 +63,10 @@ interface Room {
     closestSource(creep: Creep): Source;
     // 自动按照预设布局建造
     autoLayout(): void;
+    /** 自动市场交易 */
+    autoMarket(): void;
+    // 自动工厂生产
+    autoFactory(): void;
 }
 
 interface RoomMemory {
@@ -87,7 +90,7 @@ interface RoomMemory {
     /** lab进行boost的资源类型 */
     labsBoostType: { [id: Id<StructureLab>]: ResourceConstant };
     
-    /** manage的中心点 */
+    /** 房间布局的中心点 */
     centralPos: {x: number, y: number};
     /** 是否启动lab自动合成 */
     lab: boolean;

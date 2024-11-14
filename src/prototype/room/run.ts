@@ -14,8 +14,10 @@ export default class RoomRun extends Room {
         this.MissionUpdate();  // 任务更新
         this.roomCheck();  // 房间定期检查
         this.allStructureWork();    // 处理建筑物行为，包括tower、link
+        
         this.autoMarket();       // 自动市场交易
         this.autoLayout();       // 自动布局
+        this.autoFactory();       // 自动工厂生产
     }
     // 房间定期检查
     roomCheck() {

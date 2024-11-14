@@ -56,7 +56,11 @@ export default class BaseFunction extends Room {
         
         // 计算每个采集点的绑定Creep数量，并动态维护绑定最少的采集点列表
         this.source.forEach((source: Source) => {
-            let creepCount = _.filter(Game.creeps, c => c.memory.targetSourceId === source.id && c.memory.role === creep.memory.role).length;
+            let creepCount = _.filter(Game.creeps, c => 
+                        c.memory.role === creep.memory.role &&
+                        c.memory.targetSourceId === source.id &&
+                        c.ticksToLive > 100
+                    ).length;
 
             // 记录绑定数最小的采集点
             if (creepCount < minCreepCount) {
@@ -140,31 +144,6 @@ export default class BaseFunction extends Room {
         return energy;
     }
 
-    // 计算中心点
-    CacheCenterPos() {
-        const storage = this.storage;
-        const terminal = this.terminal;
-        const manageLink = this.link.find((link) => link.pos.inRangeTo(storage, 2));
-        
-        if (storage && terminal && manageLink) {
-            let centralPos = null;
-            const structures = this.find(FIND_STRUCTURES, {
-                filter: (structure) => {
-                    return structure.structureType === STRUCTURE_ROAD &&
-                        structure.pos.inRangeTo(storage, 1) &&
-                        structure.pos.inRangeTo(terminal, 1) &&
-                        structure.pos.inRangeTo(manageLink, 1);
-                }
-            });
-            if (structures.length > 0) {
-                centralPos = structures[0].pos;
-            }
-            if (centralPos) {
-                this.memory.centralPos = { x: centralPos.x, y: centralPos.y };
-                return true;
-            }
-        }
-    }
 }
 
 function AddList(list: any[], num: number, type: any) {

@@ -13,9 +13,9 @@ function manageMission(creep: Creep): boolean {
      * 获取结构对象
      */
     const getStructure = (structureKey: string) => {
-        return structureKey === 'storage' || structureKey === 'terminal' 
+        return structureKey === 'storage' || structureKey === 'terminal' || structureKey === 'factory'
                ? creep.room[structureKey] 
-               : Game.getObjectById(creep.room.memory[structureKey]);
+               : null;
     };
 
     const taskdata = task.data as ManageTask
@@ -23,7 +23,10 @@ function manageMission(creep: Creep): boolean {
     source = getStructure(taskdata.source);
     target = getStructure(taskdata.target);
 
-    if (!source || !target) return false;
+    if (!source || !target) {
+        creep.room.deleteMissionFromPool('manage', task.id)
+        return false;
+    };
 
     const type = taskdata.resourceType;
     const amount = taskdata.amount;
@@ -141,21 +144,8 @@ const manageFunction = function (creep: Creep) {
     const storage = creep.room.storage;
     const terminal = creep.room.terminal;
     
-    // 移动到中央搬运点
-    const centralPos = creep.room.memory.centralPos;
-    if (centralPos) {
-        const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);
-        if (!creep.pos.isEqualTo(pos)) {
-            creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
-            return; // 如果正在移动，直接返回
-        }
-    } else {
-        // 寻找同时与storage、terminal、manageLink相邻的点作为中央搬运点
-        creep.room.CacheCenterPos();
-    }
-    
     if(manageMission(creep)) {
-            return;
+        return;
     }
     
     // 检查身上是否有非能量资源并存放到storage
@@ -186,11 +176,24 @@ const manageFunction = function (creep: Creep) {
         if (creep.store[RESOURCE_ENERGY] === 0) {
             return creep.withdrawOrMoveTo(manageLink, RESOURCE_ENERGY);
         }
-        
+    }
+
+    if (creep.store[RESOURCE_ENERGY] > 0) {
         const target = storage?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? storage :
                         terminal?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? terminal : null;
         if (target) return creep.transferOrMoveTo(target, RESOURCE_ENERGY);
     }
+
+    // 闲置时移动到布局中心
+    const centralPos = creep.room.memory.centralPos;
+    if (centralPos) {
+        const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);
+        if (!creep.pos.isEqualTo(pos)) {
+            creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
+            return; // 如果正在移动，直接返回
+        }
+    }
+    return;
 };
 
 export default manageFunction;

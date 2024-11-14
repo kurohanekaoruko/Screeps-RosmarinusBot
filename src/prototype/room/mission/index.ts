@@ -65,7 +65,7 @@ export default class Mission extends Room {
         const NORMAL_STRUCTURE_THRESHOLD = 0.8;     // 普通修复建筑耐久度阈值
         const URGENT_STRUCTURE_THRESHOLD = 0.1;     // 紧急修复建筑耐久度阈值
         const NORMAL_WALL_THRESHOLD = 0.001;        // 普通修复墙耐久度阈值
-        const URGENT_WALL_HITS = 2000;               // 紧急修复墙耐久度阈值
+        const URGENT_WALL_HITS = 2000;               // 紧急修复墙耐久度
         
 
         // 维修优先级：紧急维修-建筑 > 紧急维修-墙 > 常规维修-建筑 > 常规维修-墙
@@ -120,7 +120,7 @@ export default class Mission extends Room {
         for(const structure of walls) {
             const { hitsMax, hits, id, pos } = structure;
             const posInfo = `${pos.x}/${pos.y}/${pos.roomName}`
-            if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD) {  // 刷墙
+            if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD * 0.9) {  // 刷墙
                 const level = Math.floor(hits / hitsMax * 100); // 优先级
                 const data = {target: id, hits: hitsMax * WALL_HITS_MAX_THRESHOLD};
                 this.BuildRepairMissionAdd('walls', posInfo, level, data)
@@ -156,7 +156,7 @@ export default class Mission extends Room {
         this.UpdatePowerMission();
         this.UpdateLabMission();
         this.UpdateLabBoostMission();
-        this.UpdateNuketMission();
+        this.UpdateNukerMission();
     }
 
     UpdateEnergyMission() {
@@ -410,7 +410,7 @@ export default class Mission extends Room {
     }
 
     // 填充nuket用的资源
-    UpdateNuketMission() {
+    UpdateNukerMission() {
         if(Game.time % 50 !== 0) return;
         if(this.level < 8) return;
         if(!this.nuker) return;
@@ -483,24 +483,5 @@ export default class Mission extends Room {
 
         this.submitMissionComplete('transport', id, creepid, {amount} as any, deleteFunc);
         return OK;
-    }
-
-    // 发布使用Power的任务
-    UpdatePowerUseMission() {
-        if(this.level < 8) return;
-        if(!this.powerSpawn) return;
-
-        const factory = this.factory;
-        if(factory && this.memory.factoryLevel) {
-            const effect = factory.effects.find(e => e.effect === PWR_OPERATE_FACTORY);
-            if(!effect || effect.ticksRemaining < 20) {
-                const posInfo = `${factory.pos.x}/${factory.pos.y}/${factory.pos.roomName}`;
-                const level = factory.level ? factory.level : this.memory.factoryLevel;
-                this.PowerUseMissionAdd(PWR_OPERATE_FACTORY, posInfo, );
-            }
-        }
-
-        // 未实现
-        
     }
 }

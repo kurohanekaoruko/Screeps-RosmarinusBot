@@ -294,7 +294,7 @@ export default {
             }
             return true;
         },
-        delete(roomName: string, type: string, orderType: string) {
+        remove(roomName: string, type: string, orderType: string) {
             const BOT_NAME = global.BOT_NAME;
             if(!Memory[BOT_NAME]['autoMarket'][roomName]) {
                 console.log(`房间 ${roomName} 没有开启自动交易`);

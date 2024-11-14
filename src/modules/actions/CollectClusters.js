@@ -48,7 +48,6 @@ const CenterRoomCollect = function (homeRoomName, targetRoomName, num) {
         const bodys = DynamicBodys('out-attack', lv);
         const memory = { role: 'out-attack', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
         homeRoom.SpawnQueueAdd('Outer_A', bodys, memory);
-        Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
         return;
     }
 
@@ -57,7 +56,6 @@ const CenterRoomCollect = function (homeRoomName, targetRoomName, num) {
         const bodys = DynamicBodys('out-harvest', lv);
         const memory = { role: 'out-harvest', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
         homeRoom.SpawnQueueAdd('Outer_H', bodys, memory);
-        Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
         return;
     }
 
@@ -66,7 +64,6 @@ const CenterRoomCollect = function (homeRoomName, targetRoomName, num) {
         const bodys = DynamicBodys('out-carry', lv);
         const memory = { role: 'out-carry', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
         homeRoom.SpawnQueueAdd('Outer_C', bodys, memory);
-        Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
         return;
     }
 }
@@ -143,7 +140,6 @@ const outScoutSpawn = function (homeRoom, homeRoomName, targetRoomName, targetRo
     const bodys = [0,0,1,0,0,0,0,0];
     const memory = { role: 'out-scout', homeRoom: homeRoomName, targetRoom: targetRoomName };
     homeRoom.SpawnQueueAdd('Outer_S', bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + 50;
     return true;
 }
 
@@ -177,7 +173,6 @@ const outDefendSpawn = function (homeRoom, homeRoomName, targetRoomName, lv, tar
     if(!bodys || !memory || !name) return false;
 
     homeRoom.SpawnQueueAdd(name, bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + 1040;
     return true;
 }
 
@@ -190,7 +185,6 @@ const outHarvesterSpawn = function (homeRoom, homeRoomName, targetRoomName, lv, 
     const memory = { role: 'out-harvest', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
 
     homeRoom.SpawnQueueAdd('Outer_H', bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
     return true;
 }
 
@@ -214,7 +208,6 @@ const outCarrySpawn = function (homeRoom, homeRoomName, targetRoomName, lv, carr
     const memory = { role: role, type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
 
     homeRoom.SpawnQueueAdd('Outer_C', bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
     return true;
 }
 
@@ -229,7 +222,6 @@ const outReserverSpawn = function (homeRoom, homeRoomName, targetRoomName, lv, t
     const memory = { role: 'out-claim', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
 
     homeRoom.SpawnQueueAdd('Outer_RE', bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + 1300;
     return true;
 }
 
@@ -247,7 +239,6 @@ const outBuilderSpawn = function (homeRoom, homeRoomName, targetRoomName, lv, ta
     const memory = { role: 'out-build', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
 
     homeRoom.SpawnQueueAdd('Outer_B', bodys, memory);
-    Memory.ExternalSpawn = (Memory.ExternalSpawn || 0) + bodysEnergy(bodys);
     return true;
 }
 
@@ -255,10 +246,6 @@ const DynamicBodys = function (role, lv) {
     const bodypart = RoleData[role].adaption ? RoleLevelData[role][lv].bodypart : RoleData[role].ability;
     return bodypart;
 }
-
-const bodysEnergy = function (bodys) {
-    return bodys.reduce((totalEnergy, body) => totalEnergy + BODYPART_COST[body], 0);
-};
 
 
 export { CollectClusters }

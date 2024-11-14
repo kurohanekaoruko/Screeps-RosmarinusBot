@@ -7,12 +7,12 @@ function AutoMissionFlag(flagName) {
     if (Game.time % 20 != 2) return;
 
 
-    // 查找符合automanage-{source}2{target}-{type}-{amount}的flag
-    const automanageMatch = flagName.match(/^automanage[-#/ ]([stlf])2([stlf])[-#/ ](\w+)[-#/ ](\d+)$/);
-    if(automanageMatch) {
-        AutoManageFlag(automanageMatch, flagName);
-        return true;
-    }
+    // // 查找符合automanage-{source}2{target}-{type}-{amount}的flag
+    // const automanageMatch = flagName.match(/^automanage[-#/ ]([stlf])2([stlf])[-#/ ](\w+)[-#/ ](\d+)$/);
+    // if(automanageMatch) {
+    //     AutoManageFlag(automanageMatch, flagName);
+    //     return true;
+    // }
 
     // 查找符合autofactory-{resourceType}-{amount}的flag
     const autofactoryMatch = flagName.match(/^autofactory[-#/ ](\w+)[-#/ ](\d+)$/);

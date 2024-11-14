@@ -86,33 +86,39 @@ export default class StructureWork extends Room {
         }
 
         if(!controllerLink && !manageLink) return;
+
+        const transferOK = {};
     
         for (let sourceLink of sourceLinks) {
             if(sourceLink.cooldown != 0) continue;  // 如果 Link 在冷却中，则跳过
-            if(sourceLink.store[RESOURCE_ENERGY] < 600) continue;  // 如果 Link 的能量不足 600，则跳过
-            if (controllerLink && controllerLink.store[RESOURCE_ENERGY] < 400) {
+            if(sourceLink.store[RESOURCE_ENERGY] < 400) continue;  // 如果 Link 的能量不足，则跳过
+            if (controllerLink && controllerLink.store[RESOURCE_ENERGY] < 400 && !transferOK.controllerLink) {
                 sourceLink.transferEnergy(controllerLink);  // 传输能量
+                transferOK.controllerLink = true;
                 continue;
             }
-            if (manageLink && manageLink.store[RESOURCE_ENERGY] < 400) {
+            if (manageLink && manageLink.store[RESOURCE_ENERGY] < 400 && !transferOK.manageLink) {
                 sourceLink.transferEnergy(manageLink);  // 传输能量
+                transferOK.manageLink = true;
                 continue;
             }
             if(!normalLink || normalLink.length < 1) continue;
-            normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400);
-            if (normalLink) {
-                sourceLink.transferEnergy(normalLink[0]);  // 传输能量
+            const nl = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
+            if (nl) {
+                sourceLink.transferEnergy(nl);  // 传输能量
+                transferOK[nl.id] = true;
                 continue;
             }
+
+            break;
         }
 
-        if (controllerLink && controllerLink.store[RESOURCE_ENERGY] < 400){ // 如果控制器Link能量不足400
+        if (controllerLink && controllerLink.store[RESOURCE_ENERGY] < 400 && !transferOK.controllerLink){ // 如果控制器Link能量不足400
             if(!manageLink || manageLink.cooldown != 0) return;
             if(manageLink && manageLink.store[RESOURCE_ENERGY] > 400){  // 如果中心Link能量大于400
                 manageLink.transferEnergy(controllerLink);  // 传输能量
                 return;
             }
-            
         }
         if (manageLink && manageLink.store[RESOURCE_ENERGY] > 400){
             normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400);
@@ -125,14 +131,13 @@ export default class StructureWork extends Room {
 
     LabWork() {
         if (Game.time % 5 !== 1) return;  // 每 5 tick 执行一次
-        const BOT_NAME = global.BaseConfig.BOT_NAME;
         if (!this.memory.lab) return;    // lab关停时不合成
 
         if (!this.lab) return;
         if (!this.memory.labA || !this.memory.labB) return;
 
-        const labAtype = Memory[BOT_NAME]['rooms'][this.name].labAtype;
-        const labBtype = Memory[BOT_NAME]['rooms'][this.name].labBtype;
+        const labAtype = this.memory.labAtype ;
+        const labBtype = this.memory.labBtype;
         if (!labAtype || !labBtype) return;
         
         let labA = Game.getObjectById(this.memory.labA);
@@ -191,14 +196,16 @@ export default class StructureWork extends Room {
         if(!factory) return;
 
         if(factory.cooldown != 0) return;
+
         const task = this.memory.factoryTask;
         if(!task) return;
+
         const result = factory.produce(task);
+
         if(result !== OK) {
             if(factory.store[this.memory.factoryTask] > 0) {
                 this.ManageMissionAdd('f', 's', this.memory.factoryTask, factory.store[this.memory.factoryTask]);
             }
-            this.memory.factoryTask = '';
         };
         return;
     }
