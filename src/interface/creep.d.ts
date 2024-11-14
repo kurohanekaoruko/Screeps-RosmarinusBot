@@ -8,6 +8,7 @@ interface Creep {
 }
 
 interface CreepMemory {
+    
     /**creep 的角色*/
     role: string;
     dontPullMe: boolean;
@@ -25,4 +26,5 @@ interface CreepMemory {
     boosted: boolean;
     squad: string;
     boostAttempts: any;
+    Rerunt: number;
 }

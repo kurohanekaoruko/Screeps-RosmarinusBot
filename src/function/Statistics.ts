@@ -13,7 +13,6 @@ export const Statistics = {
         updateGclGplSpeed();   // 统计 GCL / GPL 的升级速度
         updateRoomStats();     // 房间等级 & 房间能量储备
         updateRoomUpgradeTimeEstimate(); // 房间升级时间估计
-        updateExternalEnergy();// 外矿能量输入
         updateResourceStats(); // 资源统计
         updateCreepCount();    // Creep 数量
         updateCreditInfo();         // credit变动情况
@@ -130,15 +129,6 @@ function updateRoomUpgradeTimeEstimate() {
 
     stats.lastRclProgress = lastProgress;
     stats.lastUpgradeTimestamp = Date.now();
-}
-
-function updateExternalEnergy() {
-    // 外矿能量输入. 每 500 tick 计算一次. 计算平均每100tick的能量净输入.
-    if (Game.time % 500 !== 1) return;
-    // 外矿收入 - 外矿单元孵化成本
-    Memory.stats.NetExternalEnergyInput = ((Memory.ExternalEnergy || 0) - (Memory.ExternalSpawn || 0)) / 5;
-    Memory.ExternalEnergy = 0;
-    Memory.ExternalSpawn = 0;
 }
 
 const ResClassType = {

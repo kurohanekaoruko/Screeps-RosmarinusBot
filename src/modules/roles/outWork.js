@@ -444,11 +444,6 @@ const OutTransport = {
 
         if(this.checkAndFillNearbyExtensions(creep)) return;
     
-        if (!creep.memory.served) {
-            Memory.ExternalEnergy = (Memory.ExternalEnergy || 0) + creep.store.getUsedCapacity(RESOURCE_ENERGY);
-            creep.memory.served = true;
-        }
-    
         if (creep.memory.cache.targetId) {
             let target = Game.getObjectById(creep.memory.cache.targetId);
             if (target) {
@@ -632,22 +627,6 @@ const OutBuilder = {
                 creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
             }
             return;
-        }
-        else {
-            for(const roomName in Memory.CollectTargetRoom) {
-                const room = Game.rooms[roomName];
-                if (room) {
-                    const constructionSite = room.find(FIND_CONSTRUCTION_SITES, {
-                        filter: (site) => site.structureType === STRUCTURE_ROAD
-                    });
-                    if (constructionSite.length > 0) {
-                        const target = constructionSite[0];
-                        creep.memory.cache.targetId = target.id;
-                        creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
-                        return;
-                    }
-                }
-            }
         }
     },
     target: function(creep) {

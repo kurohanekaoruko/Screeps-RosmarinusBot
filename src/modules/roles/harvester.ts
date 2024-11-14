@@ -1,22 +1,22 @@
 const harGetContainer = {
-    link: function (creep) {
+    link: function (creep: Creep) {
         // 查找未满的 link
         if (creep.room.level < 5) return null;
         if (!creep.room.link) return null; // 如果没有 link，则返回 null
-        const source = Game.getObjectById(creep.memory.targetSourceId);
+        const source = Game.getObjectById(creep.memory.targetSourceId) as Source;
         const link = creep.room.link.find(link => link.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && source?.pos.inRangeTo(link, 2));
         return link ?? null;
     },
-    container: function (creep) {
+    container: function (creep: Creep) {
         // 查找未满的container
         if (!creep.room.container) return null;
-        const source = Game.getObjectById(creep.memory.targetSourceId);
+        const source = Game.getObjectById(creep.memory.targetSourceId) as Source;
         const container = creep.room.container.find(c => c.store.getFreeCapacity(RESOURCE_ENERGY) > 0 && source?.pos.inRangeTo(c, 2));
         return container ?? null;
     }
 }
 
-const harvest = function (creep) {
+const harvest = function (creep: Creep) {
     // 空置时间
     if(creep.memory.Rerunt && Game.time < creep.memory.Rerunt) return;
 
@@ -25,7 +25,9 @@ const harvest = function (creep) {
         const link = harGetContainer.link(creep);
         if (!link) return false;
         const closestResource = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
-            filter: resource => resource.resourceType === RESOURCE_ENERGY
+            filter: (resource: Resource) => {
+                return resource.resourceType === RESOURCE_ENERGY
+            }
         })[0];
         if (!closestResource) return false;
         creep.pickup(closestResource)
@@ -43,7 +45,7 @@ const harvest = function (creep) {
         creep.memory.targetSourceId = closestSource.id;
     }
     // 采集能量逻辑
-    const targetSource = Game.getObjectById(creep.memory.targetSourceId);
+    const targetSource = Game.getObjectById(creep.memory.targetSourceId) as Source;
     if (!targetSource) {
         creep.say('能量源丢失');
         delete creep.memory.targetSourceId;
@@ -68,9 +70,9 @@ const harvest = function (creep) {
     creep.memory.Rerunt = Game.time + targetSource.ticksToRegeneration;
 }
 
-const transfer = function (creep) {
+const transfer = function (creep: Creep) {
     // 存储能量逻辑
-    let target = Game.getObjectById(creep.memory.cache.targetId);
+    let target = Game.getObjectById(creep.memory.cache.targetId) as StructureContainer | StructureLink | StructureStorage;
 
     const targets = [];
 
@@ -93,7 +95,7 @@ const transfer = function (creep) {
 
         // 如果能量源不存在，或是不在能量源附近，则不创建
         const tsid = creep.memory.targetSourceId;
-        const targetSource = Game.getObjectById(tsid);
+        const targetSource = Game.getObjectById(tsid) as Source;
         if (!targetSource || !creep.pos.inRangeTo(targetSource, 1)) return false;
 
         // 检查是否有建筑工地
@@ -112,20 +114,20 @@ const transfer = function (creep) {
         return true;
     }
 
-    const findSpawnExtensions = (targets) => {
+    const findSpawnExtensions = (targets: Structure[]) => {
         // 没有transport角色，则查找 Spawn、Extension
         const TransportRole = 
         ((global.CreepNum[creep.room.name] && global.CreepNum[creep.room.name]['transport']) || 0) + 
         ((global.CreepNum[creep.room.name] && global.CreepNum[creep.room.name]['carrier']) || 0);
             
         if (targets.length === 0 && TransportRole === 0) {
-            const spawnExtensions = (creep.room.spawn?.concat(creep.room.extension) || [])
+            const spawnExtensions = (creep.room.spawn?.concat(creep.room.extension as any) || [])
                 .filter(o => o && o.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
             targets.push(...spawnExtensions);
         }
     }
 
-    const findStorageAndTerminal = (targets) => {
+    const findStorageAndTerminal = (targets: Structure[]) => {
         // 如果容器存在，则不查找
         if (targets.length > 0 ||
             creep.room.link.find(l => l.pos.inRangeTo(creep.pos, 2)) ||
@@ -177,7 +179,7 @@ const transfer = function (creep) {
         }
     } else {
         // 如果没有其他目标，尝试使用储存设施
-        target = creep.room.storage;
+        target = creep.room.storage as StructureStorage;
         if (target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
             creep.transferOrMoveTo(target, RESOURCE_ENERGY);
         }
@@ -185,22 +187,30 @@ const transfer = function (creep) {
 }
 
 const HarvesterFunction = {
-    prepare: function (creep) {   // 准备阶段
+    prepare: function (creep: Creep) {   // 准备阶段
         // 从绑定数量最少的采集点中寻找离Creep最近的
         const targetSource = creep.room.closestSource(creep);
         if (!targetSource) return false;
         creep.memory.targetSourceId = targetSource.id;
         return true;
     },
-    source: function (creep) {   // 采集能量
+    source: function (creep: Creep) {   // 采集能量
         if (!creep.moveHomeRoom()) return;
+        if (creep.store.getFreeCapacity() === 0) {
+            transfer(creep);
+            return true;
+        }
         harvest(creep);
-        return creep.store.getFreeCapacity() === 0;
+        return false;
     },
-    target: function (creep) {   // 转移能量
+    target: function (creep: Creep) {   // 转移能量
         if (!creep.moveHomeRoom()) return;
+        if (creep.store.getUsedCapacity() === 0) {
+            harvest(creep);
+            return true;
+        }
         transfer(creep);
-        return creep.store.getUsedCapacity() === 0;
+        return false;
     }
 };
 

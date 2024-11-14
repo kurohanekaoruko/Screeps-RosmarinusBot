@@ -61,7 +61,7 @@ export default class CreepSpawn extends Room {
 
         const spawnConditions = {
             'harvester': () => {
-                if(this.level <= 3) {
+                if(this.level <= 2) {
                     return currentNum < this.source.length * 2;
                 }
                 return currentNum < this.source.length
