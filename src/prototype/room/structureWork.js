@@ -7,6 +7,7 @@ export default class StructureWork extends Room {
         this.TowerWork();
         this.LinkWork();
         this.LabWork();
+        this.TerminalWork();
         this.FactoryWork();
         this.PowerSpawnWork();
     }
@@ -17,7 +18,7 @@ export default class StructureWork extends Room {
         let towers = this.tower;
     
         // 如果有敌人，则攻击敌人
-        let Hostiles = (global.Hostiles || []).map(id => Game.getObjectById(id)).filter(o => o);
+        let Hostiles = this.find(FIND_HOSTILE_CREEPS).filter(c => !global.BaseConfig.whitelist.includes(c.owner.username));
         if (Hostiles.length > 0) {
             towers.forEach(tower => {
                 if (Hostiles.length == 0) return;
@@ -70,11 +71,11 @@ export default class StructureWork extends Room {
         let manageLink = null;
         let normalLink = [];
         for(const link of this.link) {
-            if(this.source.some(source => link.pos.inRangeTo(source, 1))) {
+            if(this.source.some(source => link.pos.inRangeTo(source, 2))) {
                 sourceLinks.push(link);
                 continue;
             }
-            if(link.pos.inRangeTo(this.controller, 1)) {
+            if(link.pos.inRangeTo(this.controller, 2)) {
                 controllerLink = link;
                 continue;
             }
@@ -130,27 +131,33 @@ export default class StructureWork extends Room {
     }
 
     LabWork() {
-        if (Game.time % 5 !== 1) return;  // 每 5 tick 执行一次
-        if (!this.memory.lab) return;    // lab关停时不合成
+        // 每 5 tick 执行一次
+        if (Game.time % 5 !== 1) return;
+        // lab数量不足时不合成
+        if (!this.lab || this.lab.length < 3) return;
 
-        if (!this.lab) return;
-        if (!this.memory.labA || !this.memory.labB) return;
+        const memory =  global.BotMem('structures', this.name);
+        // lab关停时不合成
+        if (!memory || !memory.lab || this.memory.defender) return;
+        // 没有设置底物lab时不合成
+        if (!memory.labA || !memory.labB) return;
 
-        const labAtype = this.memory.labAtype ;
-        const labBtype = this.memory.labBtype;
+        const labAtype = memory.labAtype ;
+        const labBtype = memory.labBtype;
+        // 没有设置底物类型时不合成
         if (!labAtype || !labBtype) return;
         
-        let labA = Game.getObjectById(this.memory.labA);
-        let labB = Game.getObjectById(this.memory.labB);
+        let labA = Game.getObjectById(memory.labA);
+        let labB = Game.getObjectById(memory.labB);
+        // 底物lab不存在时不合成
         if (!labA || !labB) return;
-        if (labA.cooldown != 0 || labB.cooldown != 0) return;
         // 检查labA和labB是否有足够的资源
         if (labA.store[labAtype] < 5 || labB.store[labBtype] < 5) {
             return;
         }
         // 获取其他lab
         let otherLabs = this.lab
-            .filter(lab => lab.id !== this.memory.labA && lab.id !== this.memory.labB &&
+            .filter(lab => lab.id !== memory.labA && lab.id !== memory.labB &&
                     lab && lab.cooldown === 0);
         // 遍历其他lab进行合成
         for (let lab of otherLabs) {
@@ -171,50 +178,55 @@ export default class StructureWork extends Room {
     }
 
     TerminalWork() {
-        if (Game.time % 10 !== 1) return;  // 每 10 tick 执行一次
+        if (Game.time % 50 !== 2) return;
         const terminal = this.terminal;
         if (!terminal || terminal.cooldown !== 0) return;
 
-        const task = this.getMissionFromPool('send')
+        const task = this.getSendMission();
         if (!task) return;
         const { targetRoom, resourceType, amount } = task.data;
-        const result = terminal.send(resourceType, amount, targetRoom);
-        if (result === OK) {
-            console.log(`从房间 ${this.name} 向 ${targetRoom} 发送了 ${amount} 单位的 ${resourceType}`);
-        } else {
-            console.log(`从房间 ${this.name} 向 ${targetRoom} 发送 ${amount} 单位的 ${resourceType} 失败，错误代码：${result}`);
+        let sendAmount = Math.min(amount, terminal.store[resourceType]);
+        if (resourceType === RESOURCE_ENERGY) {
+            const cost = Game.market.calcTransactionCost(sendAmount, this.name, targetRoom);
+            sendAmount = Math.min(sendAmount, terminal.store[resourceType] - cost);
         }
-        this.deleteMissionFromPool('send', task.id);
+        const result = terminal.send(resourceType, sendAmount, targetRoom);
+        if (result === OK) {
+            if(amount - sendAmount > 100) {
+                this.updateMissionPool('send', task.id, {data: {amount: amount - sendAmount}});
+            } else {
+                this.deleteMissionFromPool('send', task.id);
+            }
+            console.log(`房间 ${this.name} 向 ${targetRoom} 发送了 ${sendAmount} 单位的 ${resourceType}`);
+        } else {
+            console.log(`房间 ${this.name} 向 ${targetRoom} 发送 ${sendAmount} 单位的 ${resourceType} 失败，错误代码：${result}`);
+        }
     }
 
     FactoryWork() {
         if (Game.time % 10 !== 1) return;  // 每 10 tick 执行一次
-        
-        if(!this.memory.factory) return;
-
+        const memory =  global.BotMem('structures', this.name);
+        if(!memory || !memory.factory) return;
         const factory = this.factory;
         if(!factory) return;
-
         if(factory.cooldown != 0) return;
-
-        const task = this.memory.factoryTask;
+        const task = memory.factoryTask;
         if(!task) return;
 
         const result = factory.produce(task);
 
         if(result !== OK) {
-            if(factory.store[this.memory.factoryTask] > 0) {
-                this.ManageMissionAdd('f', 's', this.memory.factoryTask, factory.store[this.memory.factoryTask]);
+            if(factory.store[memory.factoryTask] > 0) {
+                this.ManageMissionAdd('f', 's', memory.factoryTask, factory.store[memory.factoryTask]);
             }
         };
-        return;
     }
 
     PowerSpawnWork() {
         if(this.level < 8) return;
 
         // 关停时不处理
-        if(!this.memory.powerSpawn) return;
+        if(!global.BotMem('structures', this.name)?.powerSpawn) return;
 
         const powerSpawn = this.powerSpawn;
         if(!powerSpawn) return;

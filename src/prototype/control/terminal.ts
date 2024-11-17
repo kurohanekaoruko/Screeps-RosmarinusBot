@@ -1,7 +1,7 @@
 
 
 export default {
-    // 发送资源
+    // 立即发送资源
     send(room?: string, target?: string, type?: any, amount?: number){
         if(room && target && type && amount) {
             const terminal = Game.rooms[room].terminal;
@@ -10,9 +10,13 @@ export default {
             };
             const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
             type = RESOURCE_ABBREVIATIONS[type] || type;
-            amount = Math.min(terminal.store[type] || 0, amount);
+            amount = Math.min(amount, terminal.store[type] || 0);
             if(!amount) {console.log(`${room} 的终端没有足够的 ${type}。`); return;}
             const cost = Game.market.calcTransactionCost(amount, room, target);
+            if(type == RESOURCE_ENERGY) {
+                amount = amount + cost > terminal.store[type] ? 
+                        terminal.store[type] - cost : amount;
+            }
             const result = terminal.send(type, amount, target);
             if(result === OK) {
                 console.log(`成功将 ${amount} 单位的 ${type} 从 ${room} 发送到 ${target}, 传输成本 ${cost}`);
@@ -29,9 +33,13 @@ export default {
                 if (room.name == target) continue;
                 const terminal = room.terminal;
                 if (!terminal || terminal.cooldown !== 0) continue;
-                const amount = Math.min(total, terminal.store[type] || 0);
+                let amount = Math.min(total, terminal.store[type] || 0);
                 if(!amount) continue;
                 const cost = Game.market.calcTransactionCost(amount, room.name, target);
+                if(type == RESOURCE_ENERGY) {
+                    amount = amount + cost > terminal.store[type] ? 
+                            terminal.store[type] - cost : amount;
+                }
                 const result = terminal.send(type, amount, target);
                 if(result === OK) {
                     console.log(`成功将 ${amount} 单位的 ${type} 从 ${room.name} 发送到 ${target}, 传输成本 ${cost}`);
@@ -85,7 +93,7 @@ export default {
         }
     },
     // 创建市场订单
-    createOrder: {
+    order: {
         buy(data: { roomName: any; type: any; amount: any; price: any; show: any; }) {
             const {roomName, type, amount, price, show} = data;
 
@@ -185,10 +193,10 @@ export default {
         }
     },
     // 市场交易
-    market: {
+    deal: {
         buy(roomName: any, type: any, amount: any, length=20, show=true, ecost= 10) {
             if (INTERSHARD_RESOURCES.includes(type)) {
-                return global.interShardMarket(type, amount, 'buy', !!show);
+                return global.interShardMarket(type, amount, 'buy', show);
             }
             return handleMarketTransaction(roomName, type, amount, ORDER_SELL, length, show, ecost);
         },
@@ -257,8 +265,8 @@ export default {
         ).map(order => order.id);
     
         if (ordersToDelete.length > 0) {
-            console.log(`正在清理 ${ordersToDelete.length} 个已完成的订单`);
             ordersToDelete.forEach(orderId => Game.market.cancelOrder(orderId));
+            console.log(`已清理 ${ordersToDelete.length} 个已完成的订单`);
         }
     },
     // 自动市场交易

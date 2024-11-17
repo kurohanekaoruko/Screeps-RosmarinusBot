@@ -69,7 +69,7 @@ export default class CreepSpawn extends Room {
             'upgrader': () => {
                 if(global.CreepNum[this.name]['speedup-upgrad'] > 0) return false;
                 if(roomLevel == 8) {
-                    return currentNum < 1 && this.controller.ticksToDowngrade < 190000;
+                    return currentNum < 1 && this.controller.ticksToDowngrade < 180000;
                 }
                 return currentNum < num;
             },
@@ -77,7 +77,9 @@ export default class CreepSpawn extends Room {
             'manage': () => currentNum < num && this.storage && this.terminal && this.link.find(l => l.pos.inRangeTo(this.storage, 2)),
             'carrier': () => {
                 if (num === 0) {
-                    return currentNum < 1 && this.mineral?.mineralAmount > 0;
+                    return currentNum < 1 && 
+                    (this.mineral?.mineralAmount > 0 ||
+                     this.container?.find((c) => c.store.getUsedCapacity() > 500));
                 }
                 if(roomLevel < 3) {
                     return currentNum < num;
@@ -104,6 +106,9 @@ export default class CreepSpawn extends Room {
 
     // 向孵化队列中添加任务
     SpawnQueueAdd(name: string, bodys: any, memory: any) {
+        if(!global.SpawnQueue[this.name]) {
+            global.SpawnQueue[this.name] = [];
+        }
         global.SpawnQueue[this.name].push({name, bodys, memory});
         global.QueueCreepNum[this.name][memory.role] = (global.QueueCreepNum[this.name][memory.role] || 0) + 1;
     }
@@ -124,7 +129,8 @@ export default class CreepSpawn extends Room {
             }
             // 生成creep名称
             const { role } = creepInfo.memory;
-            const number = (Game.time*16+Math.floor(Math.random()*16)).toString(16).slice(-4).toUpperCase();
+            const number = (Game.time*16 + Math.floor(Math.random()*16))
+                            .toString(16).slice(-4).toUpperCase();
             const name = `${creepInfo.name||RoleData[role].code}#${number}`;
             // 如果没给bodys，则根据role和lv生成bodys
             if(!creepInfo.bodys || creepInfo.bodys.length === 0) {

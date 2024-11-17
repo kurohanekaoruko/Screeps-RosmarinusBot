@@ -38,8 +38,8 @@ const RepairWorkFunc = function (creep: Creep) {
         if(creep.memory.cache.tasktype == 'walls' && creep.store.getUsedCapacity() === 0) {
             const target = Game.getObjectById(creep.memory.cache.task.target) as Structure;
             creep.room.updateMissionPool(
-                creep.memory.cache.taskid,
                 creep.memory.cache.tasktype,
+                creep.memory.cache.taskid,
                 { level: Math.floor(target.hits / target.hitsMax * 100) }
             )
             creep.memory.cache.task = null;

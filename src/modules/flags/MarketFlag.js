@@ -69,7 +69,7 @@ function AutoBuy(autobuyMatch, flagName) {
     if (hasExistingOrder) return
 
     // 创建订单
-    const result = global.createOrder.buy({
+    const result = global.order.buy({
         roomName: room.name,
         type: resourceType,
         amount: orderAmount,
@@ -117,7 +117,7 @@ function AutoSell(autosellMatch, flagName) {
     if (hasExistingOrder) return;
 
     // 创建订单
-    const result = global.createOrder.sell({
+    const result = global.order.sell({
         roomName: room.name,
         type: resourceType,
         amount: orderAmount,

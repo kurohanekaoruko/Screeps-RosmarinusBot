@@ -2,48 +2,48 @@
 function BaseFlag(flagName) {
     if(Game.time % 20 != 0) return false;
 
-    const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
+    // const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
 
 
-    // 查找符合s2t的flag, 切换 AUTO_S2T
-    const s2tMatch = flagName.match(/^s2t$/);
-    if(s2tMatch) {
-        Game.flags[flagName].room.memory.AUTO_S2T = !Game.flags[flagName].room.memory.AUTO_S2T;
-        console.log(`在房间 ${Game.flags[flagName].room.name} 设置终端自动资源转入为: ${Game.flags[flagName].room.memory.AUTO_S2T ? '开启' : '关闭'}`);
-        Game.flags[flagName].remove();
-        return true;
-    }
+    // // 查找符合s2t的flag, 切换 AUTO_S2T
+    // const s2tMatch = flagName.match(/^s2t$/);
+    // if(s2tMatch) {
+    //     Game.flags[flagName].room.memory.AUTO_S2T = !Game.flags[flagName].room.memory.AUTO_S2T;
+    //     console.log(`在房间 ${Game.flags[flagName].room.name} 设置终端自动资源转入为: ${Game.flags[flagName].room.memory.AUTO_S2T ? '开启' : '关闭'}`);
+    //     Game.flags[flagName].remove();
+    //     return true;
+    // }
 
-    // 查找符合t2s的flag, 切换 AUTO_T2S
-    const t2sMatch = flagName.match(/^t2s$/);
-    if(t2sMatch) {
-        Game.flags[flagName].room.memory.AUTO_T2S = !Game.flags[flagName].room.memory.AUTO_T2S;
-        console.log(`在房间 ${Game.flags[flagName].room.name} 设置终端资源自动转出为: ${Game.flags[flagName].room.memory.AUTO_T2S ? '开启' : '关闭'}`);
-        Game.flags[flagName].remove();
-        return true;
-    }
+    // // 查找符合t2s的flag, 切换 AUTO_T2S
+    // const t2sMatch = flagName.match(/^t2s$/);
+    // if(t2sMatch) {
+    //     Game.flags[flagName].room.memory.AUTO_T2S = !Game.flags[flagName].room.memory.AUTO_T2S;
+    //     console.log(`在房间 ${Game.flags[flagName].room.name} 设置终端资源自动转出为: ${Game.flags[flagName].room.memory.AUTO_T2S ? '开启' : '关闭'}`);
+    //     Game.flags[flagName].remove();
+    //     return true;
+    // }
 
-    // 查找labA、labB的flag, 设置底物lab的id
-    const labABMatch = flagName.match(/^lab[-_#/ ]([AB])$/);
-    if(labABMatch) {
-        const [_, labAB] = labABMatch;
-        const flag = Game.flags[flagName];
-        const room = flag.room;
-        if(room) {
-            const lab = flag.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_LAB);
-            const labId = lab ? lab.id : undefined;
-            if(labId) {
-                room.memory[`lab${labAB}`] = labId;
-                console.log(`在房间 ${room.name} 设置了lab${labAB}的ID: ${labId}`);
-            } else {
-                console.log(`在旗帜 ${flagName} 的位置没有找到lab`);
-            }
-        } else {
-            console.log(`无法为旗帜 ${flagName} 找到对应的房间`);
-        }
-        flag.remove();
-        return true;
-    }
+    // // 查找labA、labB的flag, 设置底物lab的id
+    // const labABMatch = flagName.match(/^lab[-_#/ ]([AB])$/);
+    // if(labABMatch) {
+    //     const [_, labAB] = labABMatch;
+    //     const flag = Game.flags[flagName];
+    //     const room = flag.room;
+    //     if(room) {
+    //         const lab = flag.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_LAB);
+    //         const labId = lab ? lab.id : undefined;
+    //         if(labId) {
+    //             room.memory[`lab${labAB}`] = labId;
+    //             console.log(`在房间 ${room.name} 设置了lab${labAB}的ID: ${labId}`);
+    //         } else {
+    //             console.log(`在旗帜 ${flagName} 的位置没有找到lab`);
+    //         }
+    //     } else {
+    //         console.log(`无法为旗帜 ${flagName} 找到对应的房间`);
+    //     }
+    //     flag.remove();
+    //     return true;
+    // }
 
 
     // 查找符合labset-{resourceType}的flag

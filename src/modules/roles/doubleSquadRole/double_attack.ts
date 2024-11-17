@@ -1,7 +1,8 @@
 const getheal = function (creep: Creep) {
     if(Game.time % 10 !== 0) return;
     const healCreeps = creep.room.find(FIND_MY_CREEPS, {
-        filter: (c) => c.memory.role === 'double-heal' && !c.memory.bind
+        filter: (c) => c.memory.role === 'double-heal' && 
+                c.memory.squad === 'attack' && !c.memory.bind
     });
     if(healCreeps.length < 1) return;
     const healcreep = healCreeps[0];
@@ -72,9 +73,7 @@ const double_attack_action = {
                                 .map(obj => obj.structure)
                                 .filter(structure => 
                                     structure.structureType !== STRUCTURE_CONTAINER &&
-                                    structure.structureType !== STRUCTURE_WALL &&
                                     structure.structureType !== STRUCTURE_ROAD &&
-                                    structure.structureType !== STRUCTURE_RAMPART &&
                                     structure.structureType !== STRUCTURE_KEEPER_LAIR)
         if (enemyStructures.length > 0) {
             let targetStructure = creep.pos.findClosestByRange(enemyStructures);

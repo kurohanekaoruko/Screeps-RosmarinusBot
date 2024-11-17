@@ -6,21 +6,25 @@ interface Room {
     // 获取任务池中的任务
     getMissionFromPool(type: task["type"], pos?: task["pos"], checkFunc?: (task: task) => boolean): task | null;
     // 获取任务池中的第一个任务
-    getMissionFromPoolFirst(type: task["type"]): task | null;
+    getMissionFromPoolFirst(type: task["type"], checkFunc?: (task: task) => boolean): task | null;
+    // 获取任务池中的随机一个任务
+    getMissionFromPoolRandom(type: task["type"]): task | null;
+    // 获取任务池中的所有任务
+    getAllMissionFromPool(type: task["type"]): task[] | null;
     // 用id获取任务池中的任务
-    getMissionFromPoolById(id: task["id"], type: task["type"]): task | null;
+    getMissionFromPoolById(type: task["type"], id: task["id"]): task | null;
     // 检查是否有相同任务
-    checkSameMissionInPool(type: task["type"], data: task["data"]): task['id'];
+    checkSameMissionInPool(type: task["type"], data: task["data"]): task['id'] | null;
     // 检查任务池中是否存在任务
     checkMissionInPool(type: task["type"]): boolean;
     // 检查任务池中的任务数量
     getMissionNumInPool(type: task["type"]): number;
     // 锁定任务池中的任务
-    lockMissionInPool(id: task["id"], type: task["type"]): OK | void;
+    lockMissionInPool(type: task["type"], id: task["id"]): OK | void;
     // 解锁任务池中的任务
-    unlockMissionInPool(id: task["id"], type: task["type"]): OK | void;
+    unlockMissionInPool(type: task["type"], id: task["id"]): OK | void;
     // 更新任务池中的任务
-    updateMissionPool(id: task["id"], type: task["type"], 
+    updateMissionPool(type: task["type"], id: task["id"], 
         {pos, level, data, lock, bind}: 
         {pos?: task["pos"], level?: task["level"], data?: task["data"], lock?: task["lock"], bind?: task["bind"]}): OK | void;
     // 删除任务池中的任务
@@ -36,15 +40,18 @@ interface Room {
     // 添加建造与维修任务
     BuildRepairMissionAdd(type: 'build' | 'repair' | 'walls', pos: string, level: number, data: any): void;
     // 添加运输任务
-    TransportMissionAdd(pos: string, level: number, data: TransportTask): void;
-    // 添加power任务
-    PowerUseMissionAdd(power: number, pos: string): void;
+    TransportMissionAdd(pos: string, level: number, data: TransportTask): OK | void;
+    // 添加资源发送任务
+    SendMissionAdd(target: string, resourceType: string | ResourceConstant, amount: number): OK | void;
+
     // 获取运输任务
     getTransportMission(creep: Creep): task | null;
     // 获取建造或维修任务
     getBuildMission(creep: Creep): task | null;
     // 获取维修或刷墙任务
     getRepairMission(creep: Creep): task | null;
+    // 获取发送任务的总发送数量
+    getSendMissionTotalAmount(): {[type: string]: number};
     
     // 提交任务完成信息
     doneTransportMission(id: task['id'], amount: TransportTask['amount'], creepid: Id<Creep>): void;
@@ -65,10 +72,10 @@ interface MissionPool {
 
 interface task {
     id: string, // 任务id
-    type: 'transport' | 'manage' | 'build' | 'repair' | 'walls' | 'power',  // 任务类型
+    type: 'transport' | 'manage' | 'build' | 'repair' | 'walls' | 'send',  // 任务类型
     pos: string,  // 任务位置，x/y/roomName
     level: number,  // 优先级
-    data: TransportTask | BuildRepairTask | ManageTask | SendTask | PowerTask  // 任务数据
+    data: TransportTask | BuildRepairTask | ManageTask | SendTask  // 任务数据
     lock?: boolean, // 任务是否被锁定
     bind?: Array<Id<Creep>>,   // 任务绑定creep
 }
@@ -92,7 +99,8 @@ interface ManageTask {
     amount: number,
 }
 
-interface PowerTask {
-    power: number,
-    powerlevel?: number
+interface SendTask {
+    targetRoom: string,
+    resourceType: ResourceConstant,
+    amount: number,
 }

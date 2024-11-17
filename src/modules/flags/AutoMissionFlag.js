@@ -14,12 +14,12 @@ function AutoMissionFlag(flagName) {
     //     return true;
     // }
 
-    // 查找符合autofactory-{resourceType}-{amount}的flag
-    const autofactoryMatch = flagName.match(/^autofactory[-#/ ](\w+)[-#/ ](\d+)$/);
-    if(autofactoryMatch) {
-        AutoFactoryFlag(autofactoryMatch, flagName);
-        return true;
-    }
+    // // 查找符合autofactory-{resourceType}-{amount}的flag
+    // const autofactoryMatch = flagName.match(/^autofactory[-#/ ](\w+)[-#/ ](\d+)$/);
+    // if(autofactoryMatch) {
+    //     AutoFactoryFlag(autofactoryMatch, flagName);
+    //     return true;
+    // }
     
 }
 

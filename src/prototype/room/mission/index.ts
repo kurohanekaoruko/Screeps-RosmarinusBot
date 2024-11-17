@@ -3,56 +3,15 @@
  */
 export default class Mission extends Room {    
     MissionUpdate() {
+        if(!Memory[global.BOT_NAME]['rooms'][this.name]) return;
         if(Game.time % 50 === 0) this.UpdateBuildRepairMission();  // 更新建造与维修任务
         if(Game.time % 100 === 1) this.UpdateWallRepairMission();  // 更新刷墙任务
         if(Game.time % 50 === 2) this.BuildRepairMissionCheck();  // 检查任务是否有效
 
         if(Game.time % 10 === 0) this.UpdateTransportMission();  // 更新运输任务
         if(Game.time % 10 === 1) this.TransportMissionCheck();  // 检查运输任务是否有效
-        if(Game.time % 50 === 2) this.CheckTerminalResAmount();  // 检查终端资源预留数量，不足则补充
+        if(Game.time % 50 === 2) this.UpdateManageMission();  // 更新中央搬运任务
         // if(Game.time % 50 === 3) this.UpdatePowerUseMission();  // 更新power使用任务
-    }
-
-    // 检查终端资源
-    CheckTerminalResAmount() {
-        if (!this.storage || !this.terminal) return false;
-
-        const SOURCE_ENERGY_THRESHOLD = 15000;
-        const SOURCE_RESOURCE_THRESHOLD = 6000;
-        const TARGET_ENERGY_THRESHOLD = 10000;
-        const TARGET_RESOURCE_THRESHOLD = 4000;
-
-        // 检查终端自动转入
-        for (const resourceType in this.storage.store) {
-            if(this.memory.AUTO_S2T === false) break;
-            // 当storage资源足够，且终端资源不足时，将storage资源补充到终端
-            const storageThreshold = resourceType === RESOURCE_ENERGY ? SOURCE_ENERGY_THRESHOLD : SOURCE_RESOURCE_THRESHOLD;
-            const terminalThreshold = resourceType === RESOURCE_ENERGY ? TARGET_ENERGY_THRESHOLD : TARGET_RESOURCE_THRESHOLD;
-            
-            if (this.storage.store[resourceType] <= storageThreshold || this.terminal.store[resourceType] >= terminalThreshold) continue;
-    
-            const amountToTransfer = Math.min(
-                this.storage.store[resourceType] - storageThreshold,
-                terminalThreshold - this.terminal.store[resourceType]
-            );
-
-            this.ManageMissionAdd('s', 't', resourceType, amountToTransfer);
-        }
-
-        // 检查终端自动转出
-        for (const resourceType in this.terminal.store) {
-            if(this.memory.AUTO_T2S === false) break;
-            // 当终端资源过多，且storage有空间时，将终端多余资源转入storage
-            const threshold = resourceType === RESOURCE_ENERGY ? SOURCE_ENERGY_THRESHOLD : SOURCE_RESOURCE_THRESHOLD;
-
-            if(this.terminal.store[resourceType] <= threshold) continue;
-
-            const amountToTransfer = this.terminal.store[resourceType] - threshold;
-
-            if(this.storage.store.getFreeCapacity(resourceType as ResourceConstant) < amountToTransfer) continue;
-
-            this.ManageMissionAdd('t', 's', resourceType, amountToTransfer);
-        }
     }
 
     // 发布建造维修任务
@@ -157,6 +116,7 @@ export default class Mission extends Room {
         this.UpdateLabMission();
         this.UpdateLabBoostMission();
         this.UpdateNukerMission();
+        // this.UpdateContainerMission();
     }
 
     UpdateEnergyMission() {
@@ -284,13 +244,15 @@ export default class Mission extends Room {
     // 检查lab是否需要填充资源
     UpdateLabMission() {
         const storage = this.storage;
-        if(!storage) return;
-        if(!this.memory.lab) return;    // lab关停时不进行操作
-        if(!this.memory.labA || !this.memory.labB || !this.memory.labAtype || !this.memory.labBtype) return;
-        const labA = Game.getObjectById(this.memory.labA) as StructureLab;
-        const labB = Game.getObjectById(this.memory.labB) as StructureLab;
-        const labAtype = this.memory.labAtype;
-        const labBtype = this.memory.labBtype;
+        if (!storage) return;
+        const BotMemStructures =  global.BotMem('structures', this.name);
+        if (!BotMemStructures.lab || this.memory.defender) return;    // lab关停时不进行操作
+        if (!BotMemStructures.labA || !BotMemStructures.labB ||
+            !BotMemStructures.labAtype || !BotMemStructures.labBtype) return;
+        const labA = Game.getObjectById(BotMemStructures.labA) as StructureLab;
+        const labB = Game.getObjectById(BotMemStructures.labB) as StructureLab;
+        const labAtype = BotMemStructures.labAtype;
+        const labBtype = BotMemStructures.labBtype;
 
         // 检查labA和labB中是否存在非设定资源
         [labA, labB].forEach((lab, index) => {
@@ -311,8 +273,8 @@ export default class Mission extends Room {
         [labA, labB].forEach((lab, index) => {
             const type = index === 0 ? labAtype : labBtype;
             if(lab.mineralType && lab.mineralType !== type) return;    // 有其他资源时不填充
-            if(lab.store.getFreeCapacity(type) < 500) return;   // 需要填充的量太少时不添加任务
-            if(storage.store[type] < 500) return; // storage中资源不足时不添加任务
+            if(lab.store.getFreeCapacity(type) < 1000) return;   // 需要填充的量太少时不添加任务
+            if(storage.store[type] < 1000) return; // storage中资源不足时不添加任务
             const taskdata = {
                 source: storage.id,
                 target: lab.id,
@@ -361,10 +323,13 @@ export default class Mission extends Room {
     UpdateLabBoostMission() {
         const storage = this.storage;
         const terminal = this.terminal;
-        if(!storage && !terminal) return;
-        if(this.memory.lab || !this.memory.labsBoostType) return;
+        if (!storage && !terminal) return;
+        
+        const BotMemStructures =  global.BotMem('structures', this.name);
+        if (BotMemStructures.lab && !this.memory.defender) return;
+        if (!this.memory.labsBoostType) return;
 
-        if(!this.lab || this.lab.length === 0) return;
+        if (!this.lab || this.lab.length === 0) return;
 
         const Labs = this.lab.filter(lab => lab);
         Labs.forEach(lab => {
@@ -442,6 +407,41 @@ export default class Mission extends Room {
         this.TransportMissionAdd(posInfo, 3, taskdata)
     }
 
+    // // container回收资源
+    // UpdateContainerMission() {
+    //     const storage = this.storage;
+    //     const terminal = this.terminal;
+    //     if(!storage && !terminal) return;
+
+    //     const containers = this.container;
+    //     if(!containers) return;
+
+    //     let target: Id<Structure>;
+    //     if(storage && storage.store.getFreeCapacity() > 1000) {
+    //         target = storage.id;
+    //     } else if(terminal && terminal.store.getFreeCapacity() > 1000) {
+    //         target = terminal.id;
+    //     } else {
+    //         return;
+    //     }
+
+    //     containers.forEach(container => {
+    //         if(!container) return;
+    //         if(container.store.getUsedCapacity() < 1000) return;
+
+    //         const type = Object.keys(container.store)[0] as ResourceConstant;
+
+    //         const taskdata = {
+    //             source: container.id,
+    //             target: target,
+    //             resourceType: type,
+    //             amount: container.store[type],
+    //         }
+    //         const posInfo = `${container.pos.x}/${container.pos.y}/${container.pos.roomName}`;
+    //         this.TransportMissionAdd(posInfo, 2, taskdata)
+    //     });
+    // }
+
     // 检查任务是否有效
     TransportMissionCheck() {
         const checkFunc = (task: task) => {
@@ -463,7 +463,7 @@ export default class Mission extends Room {
             const source = Game.getObjectById(data.source) as any;
             const target = Game.getObjectById(data.target) as any;
             if(!source || !target) return false;
-            return target.store.getFreeCapacity(data.resourceType) > 0 && data.amount !== 0;
+            return target.store.getFreeCapacity(data.resourceType) > 0 && data.amount >= 100;
         }
 
         this.checkMissionPool('transport', checkFunc);
@@ -471,7 +471,7 @@ export default class Mission extends Room {
 
     // 完成任务
     doneTransportMission(id: task['id'], amount: TransportTask['amount'], creepid: Id<Creep>) {
-        const task = this.getMissionFromPoolById(id, 'transport');
+        const task = this.getMissionFromPoolById('transport', id);
         if (!task) return;
         amount = (task.data as TransportTask).amount - amount;
         if (amount < 0) amount = 0;
@@ -483,5 +483,106 @@ export default class Mission extends Room {
 
         this.submitMissionComplete('transport', id, creepid, {amount} as any, deleteFunc);
         return OK;
+    }
+
+    UpdateManageMission() {
+        this.CheckTerminalResAmount();  // 检查终端资源预留数量，不足则补充
+        this.CheckFactoryResAmount(); // 检查工厂资源数量，补充或搬出
+    }
+
+    // 检查终端资源, 自动调度资源
+    CheckTerminalResAmount() {
+        if (!this.storage || !this.terminal) return false;
+
+        // 发送任务资源数
+        const sendTotal = this.getSendMissionTotalAmount();
+        // 自动调度资源阈值
+        const SOURCE_ENERGY_THRESHOLD = 15000;
+        const SOURCE_RESOURCE_THRESHOLD = 6000;
+        const TARGET_ENERGY_THRESHOLD = 10000;
+        const TARGET_RESOURCE_THRESHOLD = 4000;
+        // 自动调度资源排除项
+        const exclude: ResourceConstant[] = [
+            RESOURCE_METAL, RESOURCE_BIOMASS, RESOURCE_SILICON, RESOURCE_MIST,
+            RESOURCE_ALLOY, RESOURCE_CELL, RESOURCE_WIRE, RESOURCE_CONDENSATE,
+            RESOURCE_TUBE, RESOURCE_PHLEGM, RESOURCE_SWITCH, RESOURCE_CONCENTRATE,
+            RESOURCE_FIXTURES, RESOURCE_TISSUE, RESOURCE_TRANSISTOR, RESOURCE_EXTRACT,
+            RESOURCE_FRAME, RESOURCE_MUSCLE, RESOURCE_MICROCHIP, RESOURCE_SPIRIT,
+            RESOURCE_HYDRAULICS, RESOURCE_ORGANOID, RESOURCE_CIRCUIT, RESOURCE_EMANATION,
+            RESOURCE_MACHINE, RESOURCE_ORGANISM, RESOURCE_DEVICE, RESOURCE_ESSENCE,
+            RESOURCE_COMPOSITE, RESOURCE_CRYSTAL, RESOURCE_LIQUID
+        ];
+
+        // 检查终端自动转入
+        for (const resourceType in this.storage.store) {
+            if(this.memory.AUTO_S2T === false) break;
+            let amount = 0;
+            if (sendTotal[resourceType]) {
+                amount = Math.min(
+                    this.storage.store[resourceType],
+                    sendTotal[resourceType] - this.terminal.store[resourceType]
+                )
+            } else {
+                if(exclude.includes(resourceType as ResourceConstant)) continue;
+                // 当终端资源不足时，将storage资源补充到终端
+                const threshold = resourceType === RESOURCE_ENERGY ? TARGET_ENERGY_THRESHOLD : TARGET_RESOURCE_THRESHOLD;
+                if (this.terminal.store[resourceType] >= threshold) continue;
+                amount = Math.min(
+                    this.storage.store[resourceType],
+                    threshold - this.terminal.store[resourceType]
+                );
+            }
+            if(amount <= 0) continue;
+            this.ManageMissionAdd('s', 't', resourceType, amount);
+        }
+
+        // 检查终端自动转出
+        for (const resourceType in this.terminal.store) {
+            if(this.memory.AUTO_T2S === false) break;
+            if(sendTotal[resourceType]) continue;
+            if(exclude.includes(resourceType as ResourceConstant)) continue;
+            // 当终端资源过多，且storage有空间时，将终端多余资源转入storage
+            const threshold = resourceType === RESOURCE_ENERGY ? SOURCE_ENERGY_THRESHOLD : SOURCE_RESOURCE_THRESHOLD;
+            if(this.terminal.store[resourceType] <= threshold) continue;
+
+            const amount = this.terminal.store[resourceType] - threshold;
+            if(amount <= 0) continue;
+            if(this.storage.store.getFreeCapacity(resourceType as ResourceConstant) < amount) continue;
+            this.ManageMissionAdd('t', 's', resourceType, amount);
+        }
+    }
+
+    CheckFactoryResAmount() {
+        const factory = this.factory;
+        if (!factory) return;
+        const task = global.BotMem('structures', this.name, 'factoryTask');
+        let resourceType = global.BaseConfig.RESOURCE_ABBREVIATIONS[task] || task;
+        if (!resourceType) return;
+        const components = COMMODITIES[resourceType].components;
+
+        // 将不是材料也不是产物的搬走
+        for(const type in factory.store) {
+            if(components[type]) continue;
+            if(type === resourceType) continue;
+            this.ManageMissionAdd('f', 's', type, factory.store[type]);
+        }
+
+        // 材料不足时补充
+        for(const component in components){
+            if(factory.store[component] >= 3000) continue;
+            const amount = 3000 - factory.store[component];
+            if(amount < 1000) continue;
+            if(this.storage?.store[component] < amount) continue;
+            this.ManageMissionAdd('s', 'f', component, amount);
+        }
+
+        // 产物过多时搬出
+        if(factory.store[resourceType] >= 3000) {
+            if (this.storage && this.storage.store.getFreeCapacity() >= 3000) {
+                this.ManageMissionAdd('f', 's', resourceType, 3000);
+            } else if (this.terminal && this.terminal.store.getFreeCapacity() >= 3000) {
+                this.ManageMissionAdd('f', 't', resourceType, 3000);
+            }
+        }
     }
 }

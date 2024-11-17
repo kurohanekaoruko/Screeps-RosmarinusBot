@@ -56,7 +56,7 @@ function AutoBuy(roomName: string, amount: number, type: string) {
     if (hasExistingOrder) return
 
     // 创建订单
-    const result = global.createOrder.buy({
+    const result = global.order.buy({
         roomName: room.name,
         type: resourceType,
         amount: orderAmount,
@@ -100,7 +100,7 @@ function AutoSell(roomName: string, amount: number, type: string) {
     if (hasExistingOrder) return;
 
     // 创建订单
-    const result = global.createOrder.sell({
+    const result = global.order.sell({
         roomName: room.name,
         type: resourceType,
         amount: orderAmount,

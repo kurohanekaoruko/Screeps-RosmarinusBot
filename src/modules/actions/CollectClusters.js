@@ -18,6 +18,11 @@ const CollectClusters = {
             const carrierNum = num;
             const targetRoom = flag.pos.roomName;
 
+            if(!global.BotMem('rooms', homeRoomName)) {
+                flag.remove();
+                continue;
+            };
+
             const isCenterRoom = /^[EW]\d*[456][NS]\d*[456]$/.test(targetRoom); // 中间房间
             const isNotHighway = /^[EW]\d*[1-9][NS]\d*[1-9]$/.test(targetRoom); // 非公路房间
             if(!isCenterRoom && isNotHighway) { // 一般房间
@@ -34,7 +39,6 @@ const CollectClusters = {
 }
 
 const CenterRoomCollect = function (homeRoomName, targetRoomName, num) {
-    const targetRoom = Game.rooms[targetRoomName];
     const homeRoom = Game.rooms[homeRoomName];
     const lv = homeRoom.getEffectiveRoomLevel();
 
@@ -44,18 +48,18 @@ const CenterRoomCollect = function (homeRoomName, targetRoomName, num) {
 
     const out_attack = Object.values(Game.creeps).filter((creep) => creep.memory.role == 'out-attack' && creep.memory.targetRoom == targetRoomName && 
                                 (creep.spawning || creep.ticksToLive > 100));
-    if(out_attack.length < num) {
+    if(out_attack.length < 1) {
         const bodys = DynamicBodys('out-attack', lv);
         const memory = { role: 'out-attack', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
-        homeRoom.SpawnQueueAdd('Outer_A', bodys, memory);
+        homeRoom.SpawnQueueAdd('OA', bodys, memory);
         return;
     }
 
-    const out_harvest = Object.values(Game.creeps).filter((creep) => creep.memory.role == 'out-harvest' && creep.memory.targetRoom == targetRoomName);
-    if(out_harvest.length < Math.min(num, 3)) {
-        const bodys = DynamicBodys('out-harvest', lv);
-        const memory = { role: 'out-harvest', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
-        homeRoom.SpawnQueueAdd('Outer_H', bodys, memory);
+    const out_miner = Object.values(Game.creeps).filter((creep) => creep.memory.role == 'out-miner' && creep.memory.targetRoom == targetRoomName);
+    if(out_miner.length < 1) {
+        const bodys = DynamicBodys('out-miner', lv);
+        const memory = { role: 'out-miner', type: 'main', homeRoom: homeRoomName, targetRoom: targetRoomName };
+        homeRoom.SpawnQueueAdd('OM', bodys, memory);
         return;
     }
 

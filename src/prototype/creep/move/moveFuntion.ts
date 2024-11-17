@@ -33,12 +33,12 @@ export default class MoveFunction extends Creep {
     double_move(target: RoomPosition, color: string='#ffffff'): void {
         const bindCreep = Game.getObjectById(this.memory.bind) as Creep;
         if(!bindCreep) return;
-        if (this.pos.inRangeTo(bindCreep, 1)) {
+        if (this.pos.isNear(bindCreep.pos)) {
             // 疲劳时不移动
             if(this.fatigue + bindCreep.fatigue > 0) return;
             // 同时移动
-            this.moveTo(target, { visualizePathStyle: { stroke: color } });
-            bindCreep.moveTo(this);
+            const result = this.moveTo(target, { visualizePathStyle: { stroke: color } });
+            if(result ===  OK) bindCreep.moveTo(this);
         }
         // 如果距离拉远了，那么等待
         else {

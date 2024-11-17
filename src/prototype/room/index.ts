@@ -2,11 +2,10 @@ import { assignPrototype } from "../base"
 import BaseFunction from "./baseFunction"
 import RoomRun from "./run"
 import CreepSpawn from "./creepSpawn"
-import StructureWork from "./structure/structureWork"
+import StructureWork from "./structureWork"
 
 import AutoMarket from "./auto/autoMarket"
 import AutoLayout from "./auto/autoLayout"
-import AutoFactory from "./auto/autoFactory"
 
 
 import Mission from "./mission"
@@ -22,7 +21,6 @@ const plugins = [
     
     AutoMarket,     // 自动市场交易
     AutoLayout,     // 自动布局
-    AutoFactory,    // 自动工厂生产
 
     MissionPools,   // 任务池
     MissionAdd,     // 添加任务

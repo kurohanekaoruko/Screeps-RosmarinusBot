@@ -1,9 +1,9 @@
 import { harvester, carrier, transport, manage, upgrader, builder, repair, miner, 
          harvest_carry, dismantle, healer, claimer, lclaimer } from '@/modules/roles'
-import { Scout, OutHarvester, OutTransport, OutBuilder, Reserver, OutDefender, OutInvader, OutAttack } from '@/modules/roles/outWork';
-import { depositHarvest, depositTransport } from '@/modules/roles/deposit-collect';
-import { power_attack, power_heal, power_carry } from '@/modules/roles/power-collect';
-import { double_attack, double_dismantle, double_carry, double_heal, double_tough } from '@/modules/roles'
+import { Scout, OutHarvester, OutTransport, OutBuilder, Reserver, OutDefender, OutInvader, OutAttack } from '@/modules/roles/outRole/outWork';
+import { depositHarvest, depositTransport } from '@/modules/roles/outRole/deposit-collect';
+import { power_attack, power_heal, power_carry } from '@/modules/roles/outRole/power-collect';
+import { double_attack, double_dismantle, double_carry, double_heal, double_tough, double_defender } from '@/modules/roles'
 
 
 interface RoleConfig {
@@ -43,15 +43,14 @@ export const RoleData: RoleConfig = {
     'lclaimer': { num: 0, ability: [0, 0, 10, 0, 0, 9, 1, 0], level: 11, code: 'LC', action: lclaimer },
 
     /* 战斗相关 */
-    'dismantle': { num: 0, ability: [25, 0, 25, 0, 0, 0, 0, 0], level: 11, code: 'DI', mission: dismantle}, // 拆迁机
-    'healer': { num: 0, ability: [0, 0, 0, 0, 0, 5, 0, 0], level: 10, code: 'HL', mission: healer}, // 治疗
     /* 二人队 */
-    'double-attack': { num: 0, ability: [0, 0, 10, 28, 0, 0, 0, 12], level: 10, code: '2A', must: true, action: double_attack},
-    'double-rangeattack': { num: 0, ability: [0, 0, 10, 0, 28, 0, 0, 12], level: 10, code: '2R', must: true},
-    'double-dismantle': { num: 0, ability: [28, 0, 10, 0, 0, 0, 0, 12], level: 10, code: '2D', must: true, action: double_dismantle},
-    'double-carry': { num: 0, ability: [0, 28, 10, 0, 0, 0, 0, 12], level: 10, code: '2C', must: true, action: double_carry},
-    'double-heal': { num: 0, ability: [0, 0, 10, 0, 0, 28, 0, 12], level: 10, code: '2H', must: true, action: double_heal},
-    'double-tough': { num: 0, ability: [0, 0, 10, 0, 0, 0, 0, 40], level: 10, code: '2T', must: true, action: double_tough},
+    'double-attack': { num: 0, ability: [0, 0, 10, 28, 0, 0, 0, 12], level: 10, code: '2A', action: double_attack},
+    'double-rangeattack': { num: 0, ability: [0, 0, 10, 0, 28, 0, 0, 12], level: 10, code: '2R'},
+    'double-dismantle': { num: 0, ability: [28, 0, 10, 0, 0, 0, 0, 12], level: 10, code: '2D', action: double_dismantle},
+    'double-carry': { num: 0, ability: [0, 28, 10, 0, 0, 0, 0, 12], level: 10, code: '2C', action: double_carry},
+    'double-heal': { num: 0, ability: [0, 0, 10, 0, 0, 28, 0, 12], level: 10, code: '2H', action: double_heal},
+    'double-tough': { num: 0, ability: [0, 0, 10, 0, 0, 0, 0, 40], level: 10, code: '2T', action: double_tough},
+    'double-defender': { num: 0, ability: [0, 0, 10, 30, 0, 0, 0, 10], level: 10, code: '2DF', action: double_defender }, // 防御
 
 
     /* 外矿 */

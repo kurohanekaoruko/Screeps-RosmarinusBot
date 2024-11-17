@@ -9,9 +9,8 @@ function manageMission(creep: Creep): boolean {
     const task = creep.room.getMissionFromPoolFirst('manage') as task;
     let source = null;
     let target = null;
-    /**
-     * 获取结构对象
-     */
+
+    /** 获取结构对象 */
     const getStructure = (structureKey: string) => {
         return structureKey === 'storage' || structureKey === 'terminal' || structureKey === 'factory'
                ? creep.room[structureKey] 
@@ -30,14 +29,9 @@ function manageMission(creep: Creep): boolean {
 
     const type = taskdata.resourceType;
     const amount = taskdata.amount;
-
-    // 如果目标结构没有空余空间，则移除任务
-    if(target.store.getFreeCapacity() === 0) {
-        creep.room.deleteMissionFromPool('manage', task.id)
-        return false;
-    };
-    // 如果源结构没有足够资源，则移除任务
-    if(source.store.getUsedCapacity(type) < amount) {
+    
+    // 如果任务数据不合法，则移除任务
+    if(!amount || typeof amount !== 'number' || amount <= 0) {
         creep.room.deleteMissionFromPool('manage', task.id)
         return false;
     }
@@ -138,28 +132,12 @@ function handleTransfer(creep: Creep, target: any, type: ResourceConstant, amoun
     return true;
 }
 
-
-const manageFunction = function (creep: Creep) {
-    if (!creep.memory.dontPullMe) creep.memory.dontPullMe = true;
+function LinkEnergyTransfer(creep: Creep) {
     const storage = creep.room.storage;
     const terminal = creep.room.terminal;
-    
-    if(manageMission(creep)) {
-        return;
-    }
-    
-    // 检查身上是否有非能量资源并存放到storage
-    if (storage) {
-        const resourceType = Object.keys(creep.store)[0] || RESOURCE_ENERGY;
-        if (resourceType !== RESOURCE_ENERGY) {
-            creep.transferOrMoveTo(storage, resourceType);
-            return;
-        }
-    }
-
     const controllerLink = creep.room.link.find(l => l.pos.inRangeTo(creep.room.controller, 2));
     const manageLink = creep.room.link.find(l => l.pos.inRangeTo(creep.room.storage, 2));
-
+    // 向link转移能量
     if (controllerLink && creep.room.level < 8 && controllerLink.store[RESOURCE_ENERGY] < 400) {
         if (manageLink?.store.getFreeCapacity(RESOURCE_ENERGY) < 100) {
             return; // 只在空余空间大于100时转移能量
@@ -171,20 +149,37 @@ const manageFunction = function (creep: Creep) {
                         terminal?.store[RESOURCE_ENERGY] > 0 ? terminal : null;
         if (source) return creep.withdrawOrMoveTo(source, RESOURCE_ENERGY);
     } 
-    
+    // 从link提取能量
     else if (manageLink?.store[RESOURCE_ENERGY] > 0) {
         if (creep.store[RESOURCE_ENERGY] === 0) {
             return creep.withdrawOrMoveTo(manageLink, RESOURCE_ENERGY);
         }
     }
+    return false
+}
 
-    if (creep.store[RESOURCE_ENERGY] > 0) {
-        const target = storage?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? storage :
-                        terminal?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? terminal : null;
-        if (target) return creep.transferOrMoveTo(target, RESOURCE_ENERGY);
+
+const manageFunction = function (creep: Creep) {
+    if (!creep.memory.dontPullMe) creep.memory.dontPullMe = true;
+    const storage = creep.room.storage;
+    const terminal = creep.room.terminal;
+
+    if (LinkEnergyTransfer(creep)) {
+        return;
     }
+    // 搬运任务
+    else if(manageMission(creep)) {
+        return;
+    }
+    
+    // 将身上的资源存放到storage、terminal中
+    const resourceType = Object.keys(creep.store)[0];
+    const target = storage?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? storage :
+                    terminal?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? terminal : null;
+    if (target && resourceType && creep.store[resourceType] > 0)
+        return creep.transferOrMoveTo(target, resourceType);
 
-    // 闲置时移动到布局中心
+    // 移动到布局中心
     const centralPos = creep.room.memory.centralPos;
     if (centralPos) {
         const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);

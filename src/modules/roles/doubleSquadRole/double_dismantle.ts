@@ -1,7 +1,8 @@
 const getheal = function (creep: Creep) {
     if(Game.time % 10 !== 0) return;
     const healCreeps = creep.room.find(FIND_MY_CREEPS, {
-        filter: (c) => c.memory.role === 'double-heal' && !c.memory.bind
+        filter: (c) => c.memory.role === 'double-heal' &&
+                c.memory.squad === 'dismantle' && !c.memory.bind
     });
     if(healCreeps.length < 1) return;
     const healcreep = healCreeps[0];
@@ -43,16 +44,18 @@ const double_dismantle_action = {
     },
     dismantle: function (creep: Creep) {
         if(creep.room.controller?.my) return false;
-        const enemiesStructures = creep.room.find(FIND_STRUCTURES, {
-            filter: (structure) => structure.structureType !== STRUCTURE_CONTAINER &&
-                                    structure.structureType !== STRUCTURE_KEEPER_LAIR
-        });
-    
-        if (enemiesStructures.length > 0) {
-            const targetStructure = creep.pos.findClosestByRange(enemiesStructures);
-            if (creep.pos.inRangeTo(targetStructure, 1)) creep.dismantle(targetStructure);
-            else creep.double_move(targetStructure, '#ffff00');
-            return true;
+
+        const disflag = Game.flags[creep.name + '-dis'] || Game.flags['dis-' + creep.room.name];
+        if(disflag) {
+            const enemiesStructures = disflag.pos.lookFor(LOOK_STRUCTURES);
+            if(enemiesStructures.length > 0) {
+                const Structures = enemiesStructures.filter((s) => s.structureType !== STRUCTURE_ROAD && s.structureType !== STRUCTURE_CONTAINER);
+                const targetStructure = Structures.find((s) => s.structureType === STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART) ||
+                                        Structures[0];
+                if(creep.pos.isNearTo(targetStructure)) creep.dismantle(targetStructure);
+                else creep.double_move(targetStructure, '#ffff00');
+                return true;
+            }
         }
 
         return false

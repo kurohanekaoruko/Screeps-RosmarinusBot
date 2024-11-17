@@ -37,19 +37,31 @@ export default class PowerCreepUsePower extends PowerCreep {
     }
     Operate_Factory() {
         if(!this.room.factory) return false;
-        if(!this.room.memory.factoryTask) return false;
+        const memory =  global.BotMem('structures', this.room.name);
+        if(!memory.factoryTask) return false;
         if(this.store[RESOURCE_OPS] < 100) return false;
 
+        // 没有factory时不处理
         const factory = this.room.factory;
         if(!factory) return false;
-        if(COMMODITIES[this.room.memory.factoryTask].level != (factory.level ? factory.level : this.room.memory.factoryLevel)) return false;
+        // factory等级不匹配时不处理
+        if(COMMODITIES[memory.factoryTask].level != 
+            (factory.level ? factory.level : memory.factoryLevel))
+            return false;
+        // 资源不充足时不处理
+        for(const resource in COMMODITIES[memory.factoryTask].components) {
+            if(this.room.storage[resource] < 3000) return false;
+        }
+
         if(factory.effects && factory.effects.some(e => e.effect == PWR_OPERATE_FACTORY && e.ticksRemaining > 0)) return false;
         const powers = this.powers;
         if(PWR_OPERATE_FACTORY in powers && powers[PWR_OPERATE_FACTORY].cooldown <= 0) {
             if(!factory) return false;
             if(factory.level && factory.level !== powers[PWR_OPERATE_FACTORY].level) return false;
-            if(!factory.level && this.room.memory.factoryLevel != powers[PWR_OPERATE_FACTORY].level) return false;
-            
+            if(!factory.level && 
+                memory.factoryLevel != powers[PWR_OPERATE_FACTORY].level)
+                return false;
+
             if (this.pos.inRangeTo(factory, 3)) {
                 this.usePower(PWR_OPERATE_FACTORY, factory);
             } else {
@@ -61,6 +73,7 @@ export default class PowerCreepUsePower extends PowerCreep {
         return false;
     }
     Operate_Spawn() {
+        if(!this.room.memory.defender) return false;
         if(!this.room.spawn) return false;
         if(this.store[RESOURCE_OPS] < 100) return false;
         const powers = this.powers;
@@ -81,7 +94,7 @@ export default class PowerCreepUsePower extends PowerCreep {
     Operate_Power() {
         if(!this.room.powerSpawn) return false;
         if(this.store[RESOURCE_OPS] < 200) return false;
-        if(this.room.storage.store[RESOURCE_POWER] < 10000) return false;
+        if(this.room.storage.store[RESOURCE_POWER] < 5000) return false;
         const powers = this.powers;
         if(PWR_OPERATE_POWER in powers && powers[PWR_OPERATE_POWER].cooldown <= 0) {
             const powerSpawn = this.room.powerSpawn;
