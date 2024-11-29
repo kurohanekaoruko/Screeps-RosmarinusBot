@@ -138,8 +138,25 @@ function handleTransfer(creep: Creep, target: any, type: ResourceConstant, amoun
 
 function LinkEnergyTransfer(creep: Creep) {
     const storage = creep.room.storage;
-    const controllerLink = creep.room.link.find(l => l.pos.inRangeTo(creep.room.controller, 2));
-    const manageLink = creep.room.link.find(l => l.pos.inRangeTo(creep.room.storage, 2));
+    const terminal = creep.room.terminal;
+    let controllerLink = null;
+    let manageLink = null;
+    let normalLink = [];
+    for(const link of creep.room.link) {
+        if(creep.room.source.some((source: any) => link.pos.inRangeTo(source, 2))) {
+            continue;
+        }
+        if(link.pos.inRangeTo(creep.room.controller, 2)) {
+            controllerLink = link;
+            continue;
+        }
+        if(link.pos.inRangeTo(storage, 1) || link.pos.inRangeTo(terminal, 1)) {
+            manageLink = link;
+            continue;
+        }
+        normalLink.push(link);
+    }
+    const nlink = normalLink.find((link: any) => link.store[RESOURCE_ENERGY] < 400);
 
     // 向link转移能量
     if (controllerLink && creep.room.level < 8 && controllerLink.store[RESOURCE_ENERGY] < 400) {
@@ -151,7 +168,17 @@ function LinkEnergyTransfer(creep: Creep) {
         }
         const source = storage?.store[RESOURCE_ENERGY] > 0 ? storage : null;
         if (source) return creep.withdrawOrMoveTo(source, RESOURCE_ENERGY);
-    } 
+    }
+    else if(nlink) {
+        if (manageLink?.store.getFreeCapacity(RESOURCE_ENERGY) < 100) {
+            return; // 只在空余空间大于100时转移能量
+        }
+        if (creep.store[RESOURCE_ENERGY] >= 100) {  // 有能量时转移
+            return creep.transferOrMoveTo(manageLink, RESOURCE_ENERGY);
+        }
+        const source = storage?.store[RESOURCE_ENERGY] > 0 ? storage : null;
+        if (source) return creep.withdrawOrMoveTo(source, RESOURCE_ENERGY);
+    }
     // 从link提取能量
     else if (manageLink?.store[RESOURCE_ENERGY] > 0) {
         if (creep.store.getFreeCapacity() > 0) {
@@ -169,7 +196,7 @@ const manageFunction = function (creep: Creep) {
 
     
     // 搬运任务
-    if(manageMission(creep)) {
+    if (manageMission(creep)) {
         return;
     }
 

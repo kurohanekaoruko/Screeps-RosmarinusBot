@@ -8,9 +8,9 @@ export default class ActiveDefend extends Room {
                 hostile.owner.username != 'Source Keeper' &&
                 hostile.owner.username != 'Invader' &&
                 (hostile.getActiveBodyparts(ATTACK) > 0 || 
-                    hostile.getActiveBodyparts(RANGED_ATTACK) > 0 ||
-                    hostile.getActiveBodyparts(HEAL) > 0 ||
-                    hostile.getActiveBodyparts(WORK) > 0)
+                hostile.getActiveBodyparts(RANGED_ATTACK) > 0 ||
+                hostile.getActiveBodyparts(HEAL) > 0 ||
+                hostile.getActiveBodyparts(WORK) > 0)
         });
         if (hostiles.length > 0) {
             if(!global.Hostiles) global.Hostiles = {};

@@ -186,10 +186,12 @@ function UpdateLabMission(room: Room) {
 
     if(!room.lab || room.lab.length === 0) return;
 
-    // 从已满的lab中取出产物到storage（不包括labA、labB）
+    const botmem = global.BotMem('structures', room.name, 'boostTypes');
+
+    // 从已满的lab中取出产物到storage（不包括labA、labB，以及设定了boost的）
     const Labs = room.lab.filter(lab => lab);
     Labs.forEach(lab => {
-        if (lab.id === labA.id || lab.id === labB.id) return;
+        if (lab.id === labA.id || lab.id === labB.id || botmem[lab.id]) return;
         if (!lab.store[lab.mineralType] || lab.store[lab.mineralType] === 0) return;
         if (lab.store.getFreeCapacity(lab.mineralType) >= 100) return;
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
@@ -203,9 +205,9 @@ function UpdateLabMission(room: Room) {
         room.TransportMissionAdd(2, taskdata)
     });
 
-    // 如果lab的资源不同于产物，则全部取出
+    // 如果lab的资源不同于产物，则全部取出（不包括labA、labB，以及设定了boost的）
     Labs.forEach(lab => {
-        if(lab.id === labA.id || lab.id === labB.id) return;
+        if(lab.id === labA.id || lab.id === labB.id || botmem[lab.id]) return;
         if(lab.mineralType === REACTIONS[labAtype][labBtype]) return;
         if(!lab.store[lab.mineralType] || lab.store[lab.mineralType] === 0) return;
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
@@ -226,16 +228,18 @@ function UpdateLabBoostMission(room: Room) {
     const terminal = room.terminal;
     if (!storage && !terminal) return;
     
-    const BotMemStructures =  global.BotMem('structures', room.name);
-    if (BotMemStructures.lab && !room.memory.defend) return;
-    if (!BotMemStructures['boostTypes']) return;
+    const botmem =  global.BotMem('structures', room.name);
+    if (!botmem['boostTypes']) return;
 
     if (!room.lab || room.lab.length === 0) return;
 
     const Labs = room.lab.filter(lab => lab);
     Labs.forEach(lab => {
-        const boostType = BotMemStructures['boostTypes'][lab.id];
-
+        const boostType = botmem['boostTypes'][lab.id];
+        // 如果没有设定boost，则不填充
+        if(!boostType) return;
+        // 如果处于开启合成状态，并且该lab是底物lab，那么不填充
+        if (botmem.lab && (lab.id == botmem.labA || lab.id == botmem.labB)) return;
         // 如果lab中存在非设定的资源，则搬走
         if(lab.mineralType !== boostType && lab.store[lab.mineralType] > 0) {
             const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;

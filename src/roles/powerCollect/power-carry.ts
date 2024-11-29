@@ -10,7 +10,7 @@ const power_carry = {
         })[0];
         if (powerBank) {
             if (!creep.pos.inRangeTo(powerBank, 3)) {
-                creep.moveTo(powerBank);
+                creep.moveTo(powerBank, {range: 3, ignoreCreeps: false});
                 return false;
             }
         }
@@ -22,7 +22,7 @@ const power_carry = {
             } else {
                 creep.moveTo(powerRuin[0]);
             }
-            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0 || powerRuin.length === 0;
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
         }
 
         const power = creep.room.find(FIND_DROPPED_RESOURCES,{filter: (r) => r.resourceType == RESOURCE_POWER});
@@ -32,19 +32,22 @@ const power_carry = {
             } else {
                 creep.moveTo(power[0]);
             }
-            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0 || power.length === 0;
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
         }
 
-        if (!powerBank && !powerRuin && !power) {
-            creep.suicide();
-            return false;
+        if (!powerBank && powerRuin.length == 0 && power.length == 0) {
+            creep.room.find(FIND_MY_CREEPS, {filter: (c) => c.memory.role == 'power-carry' &&
+                c.memory.targetRoom == creep.room.name}).forEach((c) => {c.memory['suicide'] = true});;
+            if (creep.store.getUsedCapacity(RESOURCE_POWER) === 0) {
+                creep.suicide();
+                return false;
+            }
+            if (creep.store.getUsedCapacity(RESOURCE_POWER) > 0) {
+                return true;
+            }
         }
 
-        if(creep.store.getUsedCapacity(RESOURCE_POWER) === 0) {
-            return false;
-        }
-
-        return creep.store.getFreeCapacity(RESOURCE_POWER) === 0 || power.length === 0;
+        return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
     },
     target: function(creep: Creep) {
         if (creep.room.name != creep.memory.homeRoom || creep.pos.isRoomEdge()) {
@@ -56,6 +59,9 @@ const power_carry = {
         if (storage) {
             if (creep.pos.isNearTo(storage)) {
                 creep.transfer(storage, RESOURCE_POWER);
+                if (creep.memory['suicide']) {
+                    creep.suicide();
+                }
             } else {
                 creep.moveTo(storage);
             }

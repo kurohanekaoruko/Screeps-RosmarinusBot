@@ -2,6 +2,7 @@
 export default {
     outmine: {
         add(roomName: string, targetRoom: string) {
+            if (!roomName || !targetRoom) return -1;
             const BotMem = global.BotMem('outmine');
             if (!BotMem[roomName]) BotMem[roomName] = {};
             const Mem = BotMem[roomName];
@@ -38,6 +39,7 @@ export default {
         },
         // 删除外矿
         remove(roomName: string, targetRoom: string) {
+            if (!roomName || !targetRoom) return -1;
             const BotMem = global.BotMem('outmine');
             if (!BotMem[roomName]) return ERR_NOT_FOUND;
             const Mem = BotMem[roomName];
@@ -76,6 +78,7 @@ export default {
         },
         // 获取外矿列表
         get(roomName: string) {
+            if (!roomName) return -1;
             const BotMem = global.BotMem('outmine');
             if (!BotMem[roomName]) return ERR_NOT_FOUND;
             return `energy: ${BotMem[roomName]['energy'] || []}\n` +
@@ -102,6 +105,7 @@ export default {
         },
         // 立即开始到指定房间开采power
         power(roomName: string, targetRoom: string, num: number) {
+            if (!roomName || !targetRoom || !num) return -1;
             const room = Game.rooms[roomName];
             if (!room) return;
             if (!room.memory['powerMine']) room.memory['powerMine'] = {};
@@ -110,7 +114,8 @@ export default {
             return OK;
         },
         // 立即开始到指定房间开采deposit
-        deposit(roomName: string, targetRoom: string, num: number) {
+        deposit(roomName: string, targetRoom: string, num: number[]) {
+            if (!roomName || !targetRoom || !num) return -1;
             const room = Game.rooms[roomName];
             if (!room) return;
             if (!room.memory['depositMine']) room.memory['depositMine'] = {};
@@ -119,14 +124,15 @@ export default {
             return OK;
         },
         // 取消指定房间的开采
-        cancel(roomName: string, targetRoom: string) {
+        cancel(roomName: string, targetRoom: string, type: 'power' | 'deposit') {
             const room = Game.rooms[roomName];
             if (!room) return;
-            if (room.memory['powerMine'])
+            if ((!type || type == 'power') && room.memory['powerMine'])
                 delete room.memory['powerMine'][targetRoom]
-            if (room.memory['depositMine'])
+            if ((!type || type == 'deposit') && room.memory['depositMine'])
                 delete room.memory['depositMine'][targetRoom]
             console.log(`房间 ${roomName} 的 ${targetRoom} 开采已取消。`);
+            return OK;
         }
     },
 }

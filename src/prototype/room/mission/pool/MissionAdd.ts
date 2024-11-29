@@ -82,7 +82,8 @@ export default class MissionAdd extends Room {
         this.addMissionToPool('spawn', level, {name, body, memory, energy})
         if (!global.SpawnMissionNum) global.SpawnMissionNum = {};
         if (!global.SpawnMissionNum[this.name]) global.SpawnMissionNum[this.name] = {};
-        global.SpawnMissionNum[this.name][role] = (global.SpawnMissionNum[this.name][role] || 0) + 1;
+        if (!global.SpawnMissionNum[this.name][role]) global.SpawnMissionNum[this.name][role] = 0;
+        global.SpawnMissionNum[this.name][role]++;
         return OK;
     }
 }

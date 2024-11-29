@@ -13,6 +13,21 @@ export default class BaseFunction extends Room {
         return Energy;
     }
 
+    // 获取属于该房间的creep数量
+    getCreepNum() {
+        if (!global.CreepNum) global.CreepNum = {};
+        global.CreepNum[this.name] = {};
+        Object.values(Game.creeps).forEach((creep: Creep) => {
+            if(!creep || creep.ticksToLive < creep.body.length * 3) return;
+            const role = creep.memory.role;
+            const home = creep.memory.home || creep.memory.homeRoom || creep.room.name;
+            if(!role || !home || home != this.name) return;
+            global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
+            return;
+        })
+        return global.CreepNum[this.name];
+    }
+
     // 获取当前房间的有效等级，根据可用能量判断
     getEffectiveRoomLevel() {
         let lv = this.level;

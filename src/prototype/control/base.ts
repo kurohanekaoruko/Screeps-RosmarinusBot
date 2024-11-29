@@ -22,7 +22,7 @@ export default {
         return OK;
     },
     log(text: string, ...args: any[]): OK | Error {
-        console.log(`[${global.BOT_NAME}] ${text}`, ...args);
+        console.log(`[${global.BOT_NAME}]${text}`, ...args);
         return OK;
     },
     whitelist: {

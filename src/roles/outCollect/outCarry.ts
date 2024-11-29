@@ -229,9 +229,9 @@ const outCarry = {
 
     roadRepair: function(creep) {
         if(creep.memory.role !== 'out-car') return false;
-        const roads = creep.pos.findInRange(FIND_STRUCTURES, 1, {
+        const roads = creep.pos.findInRange(FIND_STRUCTURES, 3, {
             filter: (structure) => {
-                return structure.structureType == STRUCTURE_ROAD && structure.hits < structure.hitsMax * 0.5;
+                return structure.structureType == STRUCTURE_ROAD && structure.hits < structure.hitsMax * 0.8;
             }
         });
         if (roads.length > 0) {
@@ -241,9 +241,9 @@ const outCarry = {
                 creep.moveToRoom(creep.room.name);
             }
             if(result == OK) return true;
-            if(result == ERR_NOT_IN_RANGE) { creep.moveTo(road); return; }
+            if(result == ERR_NOT_IN_RANGE) { creep.moveTo(road); return true; }
         }
-        const roadSite = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 1, {
+        const roadSite = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 3, {
             filter: (site) => {
                 return site.structureType == STRUCTURE_ROAD;
             }
@@ -255,8 +255,9 @@ const outCarry = {
                 creep.moveToRoom(creep.room.name);
             }
             if(result == OK) return true;
-            if(result == ERR_NOT_IN_RANGE) { creep.moveTo(site); return; }
+            if(result == ERR_NOT_IN_RANGE) { creep.moveTo(site); return true; }
         }
+        return false;
     },
 
     createSite: function(creep: any) {
@@ -295,8 +296,8 @@ const outCarry = {
     },
     
     target: function(creep: Creep) {
-        if (this.roadRepair(creep))
-            return creep.store.getUsedCapacity() < creep.store.getCapacity() / 2;
+        if (this.roadRepair(creep)) return;
+        if (creep.store.getUsedCapacity() < creep.store.getCapacity() / 2) return true;
         this.carry(creep);
         return creep.store.getUsedCapacity() === 0;
     },

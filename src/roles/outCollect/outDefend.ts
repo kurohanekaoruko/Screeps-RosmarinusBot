@@ -16,12 +16,24 @@ const outDefend = {
             if(!target) {
                 target = creep.pos.findClosestByRange(targets);
             }
-            if (creep.pos.inRangeTo(target, 3)) {
-                creep.rangedAttack(target)
+            if (creep.getActiveBodyparts(ATTACK) > 0) {
+                if (creep.pos.inRangeTo(target, 1)) {
+                    creep.attack(target);
+                }
+                else if (creep.pos.inRangeTo(target, 3)) {
+                    creep.rangedAttack(target);
+                    creep.moveTo(target);
+                } else {
+                    creep.moveTo(target);
+                }
+            } else {
+                if (creep.pos.inRangeTo(target, 3)) {
+                    creep.rangedAttack(target);
+                } else {
+                    creep.moveTo(target);
+                }
             }
-            else {
-                creep.moveTo(target);
-            }
+
             if (creep.hits < creep.hitsMax) {
                 creep.heal(creep);
             }

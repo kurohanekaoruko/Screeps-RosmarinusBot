@@ -19,7 +19,7 @@ export default class PowerCreepRun extends PowerCreep {
         // 续命
         if(this.ToRenew()) return;
 
-        const role = name.match(/(\w+)#\d+/)[1];
+        const role = name.match(/(\w+)-\d+/)[1];
 
         PowerCreepAction[role](this);
     }

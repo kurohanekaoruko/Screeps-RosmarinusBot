@@ -13,7 +13,8 @@ const getheal = function (creep: Creep) {
 
 const double_tough_action = {
     move: function (creep: Creep) {
-        const moveflag = Game.flags[creep.name + '-move'];
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
+        const moveflag = Game.flags[name + '-move'];
         if(moveflag && !creep.pos.inRangeTo(moveflag.pos, 0)) {
             if(creep.room.name !== moveflag.pos.roomName) {
                 creep.memory.targetRoom = moveflag.pos.roomName;
@@ -51,9 +52,13 @@ const double_tough = function (creep: Creep) {
         creep.memory.notified = true;
     }
     if(!creep.memory.boosted) {
-        const boost = ['XGHO2', 'GHO2', 'GO', 'XLHO2', 'XZHO2', 'ZHO2', 'ZO'];
+        const boost = ['XGHO2', 'GHO2', 'GO', 'XZHO2', 'ZHO2', 'ZO'];
         creep.memory.boosted = creep.boost(boost);
         return
+    }
+    if(creep.ticksToLive < 100 && creep.room.my) {
+        creep.unboost();
+        return;
     }
 
     if(!creep.memory.bind) {

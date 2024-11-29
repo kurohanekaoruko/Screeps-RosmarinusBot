@@ -61,6 +61,8 @@ interface Room {
     CacheCenterPos(): void;
     // 计算房间内所有结构体能量
     AllEnergy(): number;
+    // 获取属于该房间的creep数量
+    getCreepNum(): { [role: string]: number };
     // 返回一个等级, 取决于spawn总容量
     getEffectiveRoomLevel(): number;
     // 生成creep body

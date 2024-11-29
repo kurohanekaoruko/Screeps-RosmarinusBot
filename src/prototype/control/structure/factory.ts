@@ -34,9 +34,9 @@ export default {
                 return;
             }
             BotMemStructures[roomName]['factoryTask'] = RES[goods] || goods;
-            global.log(`已设置 ${roomName} 的factory生产任务为 ${RES[goods] || goods}。`);
+            global.log(`[${roomName}]已设置factory生产任务为 ${RES[goods] || goods}。`);
             BotMemStructures[roomName]['factory'] = true;
-            console.log(`已开启 ${roomName} 的factory。`);
+            global.log(`[${roomName}]已开启factory。`);
             return OK;
         },
         // 设置factory等级
@@ -44,16 +44,16 @@ export default {
             const room = Game.rooms[roomName];
             const BotMemStructures =  global.BotMem('structures');
             if(!room || !room.my || !BotMemStructures[roomName]) {
-                global.log(`房间 ${roomName} 不存在、未拥有或未添加。`);
+                global.log(`[${roomName}]房间不存在、未拥有或未添加。`);
                 return;
             }
             if(level < 0 || level > 5) {
-                global.log(`factory等级 ${level} 不存在。`);
+                global.log(`[${roomName}]factory等级 ${level} 不存在。`);
                 return;
             }
             BotMemStructures[roomName]['factoryLevel'] = level;
             room.memory.factoryLevel = level;
-            global.log(`已设置 ${roomName} 的factory等级为 ${level}。`);
+            global.log(`[${roomName}]已设置factory等级为 ${level}。`);
             return OK;
         },
         auto: {
@@ -62,10 +62,10 @@ export default {
                 if(roomName) {
                     const autoFactory = BotMemAutoFactory[roomName];
                     if(!autoFactory || autoFactory.length == 0) {
-                        global.log(`房间 ${roomName} 没有开启自动factory生产`);
+                        global.log(`[${roomName}]没有开启自动factory生产`);
                     }
                     else {
-                        global.log(`房间 ${roomName} 的自动factory生产：${autoFactory}`);
+                        global.log(`[${roomName}]自动factory生产：${autoFactory}`);
                     }
                     return OK;
                 }
@@ -77,7 +77,7 @@ export default {
                     if(!BotMemAutoFactory[room] || BotMemAutoFactory[room].length == 0) {
                         continue;
                     }
-                    global.log(`房间 ${room} 的自动factory生产：${BotMemAutoFactory[room]}`);
+                    global.log(`[${room}]自动factory生产：${BotMemAutoFactory[room]}`);
                 }
                 return OK;
             },

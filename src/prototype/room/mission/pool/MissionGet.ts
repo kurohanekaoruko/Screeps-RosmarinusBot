@@ -22,12 +22,6 @@ export default class MissionGet extends Room {
 
             return task;
         }
-        if(this.checkMissionInPool('repair')){
-            const task = this.getMissionFromPool('repair', posInfo);
-            if(!task) return null;
-
-            return task;
-        }
         
         return null;
     }
@@ -95,13 +89,14 @@ export default class MissionGet extends Room {
     // 获取每种role的孵化数量
     getSpawnMissionAmount() {
         const tasks = this.getAllMissionFromPool('spawn');
-        const spawns = {};
+        const spawnAmount = {};
         for(const task of tasks) {
             const data = task.data as SpawnTask;
             const role = data.memory.role;
-            spawns[role] = (spawns[role] || 0) + 1;
+            if (!spawnAmount[role]) spawnAmount[role] = 0;
+            spawnAmount[role]++;
         }
-        return spawns;
+        return spawnAmount;
     }
 
     // 获取指定一些role的总孵化数

@@ -43,6 +43,12 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
             }
             if (room.storage?.store[RESOURCE_ENERGY] < 10000) return false;
             return (currentNum < spup);
+        case 'speedup-repair':
+            const spre = global.BotMem('rooms', room.name, 'spre');
+            if (!spre) return false;
+            if (room.level < 8)  return false;
+            if (room.storage?.store[RESOURCE_ENERGY] < 10000) return false;
+            return currentNum < spre && room.checkMissionInPool('walls');
         default:
             return false;
     }
@@ -51,15 +57,7 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
 
 function UpdateSpawnMission(room: Room) {
     global.SpawnMissionNum[room.name] = room.getSpawnMissionAmount() || {};
-    global.CreepNum[room.name] = {};
-    Object.values(Game.creeps).forEach((creep: Creep) => {
-        if(!creep || (creep.ticksToLive < creep.body.length * 3 && !creep.spawning)) return;
-        const role = creep.memory.role;
-        const home = creep.memory.home || creep.room.name;
-        if(!role || !home || home != room.name) return;
-        global.CreepNum[home][role] = (global.CreepNum[home][role] || 0) + 1;
-        return;
-    })
+    global.CreepNum[room.name] = room.getCreepNum() || {};
     const lv = room.level;
     const roomName = room.name;
     for(const role in RoleData) {

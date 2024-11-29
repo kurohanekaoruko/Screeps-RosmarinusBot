@@ -1,18 +1,20 @@
 const deposit_harvest = {
-    source: function(creep) {
+    source: function(creep: Creep) {
         if (creep.room.name != creep.memory.targetRoom || creep.pos.isRoomEdge()) {
             let opt = {};
             if (creep.room.name != creep.memory.homeRoom) opt = { ignoreCreeps: false };
             creep.moveToRoom(creep.memory.targetRoom, opt);
             return;
         }
-        
-        const deposit = creep.room.deposit?.[0] ?? creep.room.find(FIND_DEPOSITS)[0];
+
+        const depositIndex = creep.memory['depositIndex'];
+        const deposit = creep.room.deposit[depositIndex] || creep.room.find(FIND_DEPOSITS)[depositIndex];
 
         if(!deposit) {
-            creep.suicide();
-            if (Memory.rooms[creep.memory.homeRoom]?.['depositMine']?.[creep.memory.targetRoom])
-                delete Memory.rooms[creep.memory.homeRoom]['depositMine'][creep.memory.targetRoom];
+            if(creep.room.deposit) {
+                creep.memory['depositIndex'] = 0;
+            } else creep.suicide();
+            return;
         }
 
         if(creep.pos.inRangeTo(deposit, 1)) {
@@ -27,7 +29,7 @@ const deposit_harvest = {
                 filter: c => c.memory.role === 'deposit-transport' && c.store.getFreeCapacity() > 0
             })[0];
             if(nearbyTransport){
-                const resourceType = Object.keys(creep.store)[0];
+                const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
                 if (creep.pos.inRangeTo(nearbyTransport, 1)) {
                     creep.transfer(nearbyTransport, resourceType);
                 }
@@ -37,14 +39,14 @@ const deposit_harvest = {
 
         return creep.store.getFreeCapacity() == 0;
     },
-    target: function(creep) {
-        const transport = creep.pos.find(FIND_MY_CREEPS, 1, {
+    target: function(creep: Creep) {
+        const nearbyTransport = creep.pos.findInRange(FIND_MY_CREEPS, 1, {
             filter: c => c.memory.role === 'deposit-transport' && c.store.getFreeCapacity() > 0
-        });
-        if (!transport) return creep.store.getUsedCapacity() == 0;
+        })[0];
+        if (!nearbyTransport) return creep.store.getUsedCapacity() == 0;
 
-        const resourceType = Object.keys(creep.store)[0];
-        creep.transfer(transport, resourceType);
+        const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
+        creep.transfer(nearbyTransport, resourceType);
         return creep.store.getUsedCapacity() == 0;
     }
 }

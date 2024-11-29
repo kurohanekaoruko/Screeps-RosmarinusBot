@@ -13,7 +13,8 @@ const getheal = function (creep: Creep) {
 
 const double_dismantle_action = {
     move: function (creep: Creep) {
-        const moveflag = Game.flags[creep.name + '-move'];
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
+        const moveflag = Game.flags[name + '-move'];
         if(moveflag && !creep.pos.inRangeTo(moveflag.pos, 0)) {
             if(creep.room.name !== moveflag.pos.roomName) {
                 creep.memory.targetRoom = moveflag.pos.roomName;

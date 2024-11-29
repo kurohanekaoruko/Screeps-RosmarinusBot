@@ -53,14 +53,15 @@ const deposit_transport = {
         });
         if (harvesters.length > 0) {
             let closestHarvester = creep.pos.findClosestByRange(harvesters, {
-                filter: creep => creep.store.getFreeCapacity() == 0
+                filter: (creep: Creep) => creep.store.getFreeCapacity() == 0
             });
             if (!closestHarvester) closestHarvester = creep.pos.findClosestByRange(harvesters);
             if (!creep.pos.inRangeTo(closestHarvester, 1)) {
                 creep.moveTo(closestHarvester, { visualizePathStyle: { stroke: '#00ff00' }, ignoreCreeps: false });
             }
         }
-        const deposit = creep.room.deposit?.[0];
+
+        const deposit = creep.pos.findClosestByRange(creep.room.deposit ?? []);
         if (deposit && creep.pos.inRangeTo(deposit, 3)) {
             creep.moveTo(deposit, {
                 visualizePathStyle: { stroke: '#00ff00' },

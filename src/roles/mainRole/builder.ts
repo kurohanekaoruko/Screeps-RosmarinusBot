@@ -19,14 +19,14 @@ const BuildWorkFunc = function (creep: Creep) {
     let taskid = null;
 
     if(!creep.memory.cache.task) {
-        const task = creep.room.getBuildMission(creep);
+        const task = creep.room.getBuildMission(creep) || creep.room.getRepairMission(creep);
         if (!task) return false;
         const taskdata = task.data as BuildTask | RepairTask;
         creep.memory.cache.task = taskdata;
         creep.memory.cache.taskid = task.id;
         creep.memory.cache.tasktype = task.type;
         const target = Game.getObjectById(taskdata.target) as any;
-        if(!target || (task.type === 'repair' && target.hits >= (taskdata as RepairTask).hits)){
+        if(!target || (task.type !== 'build' && target.hits >= (taskdata as RepairTask).hits)){
             creep.room.deleteMissionFromPool(task.type, task.id);
             delete creep.memory.cache.task;
             delete creep.memory.cache.tasktype;
@@ -39,7 +39,7 @@ const BuildWorkFunc = function (creep: Creep) {
         target = Game.getObjectById(taskdata.target);
         taskType = creep.memory.cache.tasktype;
         taskid = creep.memory.cache.taskid;
-        if(!target || (taskType === 'repair' && target.hits >= taskdata.hits)){
+        if(!target || (taskType !== 'build' && target.hits >= taskdata.hits)){
             creep.room.deleteMissionFromPool(taskType, taskid);
             delete creep.memory.cache.task;
             delete creep.memory.cache.tasktype;
@@ -55,6 +55,11 @@ const BuildWorkFunc = function (creep: Creep) {
         }
         if(taskType === 'repair'){
             if(Game.time % 10 === 0) creep.say('🔧');
+            creep.repairOrMoveTo(target);
+            return true;
+        }
+        if(taskType === 'walls'){
+            if(Game.time % 10 === 0) creep.say('🔨');
             creep.repairOrMoveTo(target);
             return true;
         }

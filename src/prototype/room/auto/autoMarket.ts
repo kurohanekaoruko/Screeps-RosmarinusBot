@@ -64,12 +64,14 @@ function AutoBuy(roomName: string, item: any) {
         }
     }
 
+    // 如果已有同类型订单未完成，则更新价格
     if (existingOrder) {
         const price = global.order.getPrice(existingOrder.resourceType, ORDER_BUY);
         if(price > existingOrder.price || price < existingOrder.price * 0.8) {
             Game.market.changeOrderPrice(existingOrder.id, price);
             return OK;
         }
+        return;
     }
 
     // 创建订单

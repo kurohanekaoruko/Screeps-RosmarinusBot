@@ -88,46 +88,24 @@ export default {
             return finalPrice;
         }
     },
-    // 市场交易
-    deal: {
-        buy(roomName: any, type: any, amount: any, show=true, length=20, ecost= 10) {
-            type = global.BaseConfig.RESOURCE_ABBREVIATIONS[type] || type;
-            if (INTERSHARD_RESOURCES.includes(type)) {
-                return interShardMarket(type, amount, 'buy', show);
-            }
-            return handleMarketTransaction(roomName, type, amount, ORDER_SELL, length, show, ecost);
-        },
-        sell(roomName: any, type: any, amount: any, show=true, length=20, ecost=10) {
-            type = global.BaseConfig.RESOURCE_ABBREVIATIONS[type] || type;
-            if (INTERSHARD_RESOURCES.includes(type)) {
-                return interShardMarket(type, amount, 'sell', show);
-            }
-            return handleMarketTransaction(roomName, type, amount, ORDER_BUY, length, show, ecost);
-        },
-    },
-    // 清理无效订单
-    orderClear() {
-        const TIME_THRESHOLD = 50000; // 时间阈值
-        const MAX_ORDERS = 200; // 最大允许订单数
-        const TARGET_ORDERS = 100; // 清理到
-    
-        const orders = Object.values(Game.market.orders);
-        if (orders.length < MAX_ORDERS) return;
-    
-        const currentTime = Game.time;
-        const completedOrders = orders.filter(order => order.remainingAmount === 0)
-            .sort((a, b) => a.created - b.created);
-    
-        const ordersToDelete = completedOrders.filter((order, index) =>
-            (currentTime - order.created > TIME_THRESHOLD) || (index < orders.length - TARGET_ORDERS)
-        ).map(order => order.id);
-    
-        if (ordersToDelete.length > 0) {
-            ordersToDelete.forEach(orderId => Game.market.cancelOrder(orderId));
-            console.log(`已清理 ${ordersToDelete.length} 个已完成的订单`);
-        }
-    },
     market: {
+        // 市场交易
+        deal: {
+            buy(roomName: any, type: any, amount: any, show=true, length=20, ecost= 10) {
+                type = global.BaseConfig.RESOURCE_ABBREVIATIONS[type] || type;
+                if (INTERSHARD_RESOURCES.includes(type)) {
+                    return interShardMarket(type, amount, 'buy', show);
+                }
+                return handleMarketTransaction(roomName, type, amount, ORDER_SELL, length, show, ecost);
+            },
+            sell(roomName: any, type: any, amount: any, show=true, length=20, ecost=10) {
+                type = global.BaseConfig.RESOURCE_ABBREVIATIONS[type] || type;
+                if (INTERSHARD_RESOURCES.includes(type)) {
+                    return interShardMarket(type, amount, 'sell', show);
+                }
+                return handleMarketTransaction(roomName, type, amount, ORDER_BUY, length, show, ecost);
+            },
+        },
         // 自动市场交易
         auto: {
             list(roomName: string) {
@@ -234,7 +212,29 @@ export default {
                 return OK;
             }
         }
-    }
+    },
+    // 清理无效订单
+    orderClear() {
+        const TIME_THRESHOLD = 50000; // 时间阈值
+        const MAX_ORDERS = 200; // 最大允许订单数
+        const TARGET_ORDERS = 100; // 清理到
+    
+        const orders = Object.values(Game.market.orders);
+        if (orders.length < MAX_ORDERS) return;
+    
+        const currentTime = Game.time;
+        const completedOrders = orders.filter(order => order.remainingAmount === 0)
+            .sort((a, b) => a.created - b.created);
+    
+        const ordersToDelete = completedOrders.filter((order, index) =>
+            (currentTime - order.created > TIME_THRESHOLD) || (index < orders.length - TARGET_ORDERS)
+        ).map(order => order.id);
+    
+        if (ordersToDelete.length > 0) {
+            ordersToDelete.forEach(orderId => Game.market.cancelOrder(orderId));
+            console.log(`已清理 ${ordersToDelete.length} 个已完成的订单`);
+        }
+    },
 }
 
 function handleMarketTransaction(roomName: string, type: any, amount: number, orderType: string, length: number, show: boolean, eCost: number) {

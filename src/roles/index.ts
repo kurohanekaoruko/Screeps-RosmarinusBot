@@ -34,16 +34,20 @@ import outAttack from './outCollect/outAttack';
 import power_attack from './powerCollect/power-attack';
 import power_heal from './powerCollect/power-heal';
 import power_carry from './powerCollect/power-carry';
+import power_defend from './powerCollect/power-defend';
 
 import deposit_harvest from './depositCollect/deposit-harvest';
 import deposit_transport from './depositCollect/deposit-transport';
+
+import one_tough from './oneBody/one_tough';
 
 
 
 
 export {harvester, carrier, transport, manage, upgrader, builder, repair, miner, logistics, 
         harvest_carry, SpeedUpgrader, claimer, lclaimer};
+export { one_tough };
 export {double_attack, double_dismantle, double_carry, double_heal, double_tough, double_defender};
 export {outScout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack};
-export {power_attack, power_heal, power_carry};
+export {power_attack, power_heal, power_carry, power_defend};
 export {deposit_harvest, deposit_transport};

@@ -36,14 +36,14 @@ export default class PowerCreepUsePower extends PowerCreep {
         return false;
     }
     Operate_Factory() {
-        if(!this.room.factory) return false;
-        const memory =  global.BotMem('structures', this.room.name);
-        if(!memory.factoryTask) return false;
-        if(this.store[RESOURCE_OPS] < 100) return false;
-
         // 没有factory时不处理
         const factory = this.room.factory;
         if(!factory) return false;
+        // 没有任务时不处理
+        const memory =  global.BotMem('structures', this.room.name);
+        if(!memory.factoryTask) return false;
+        // ops不足时不处理
+        if(this.store[RESOURCE_OPS] < 100) return false;
         // factory等级不匹配时不处理
         if(COMMODITIES[memory.factoryTask].level != 
             (factory.level ? factory.level : memory.factoryLevel))
@@ -52,14 +52,14 @@ export default class PowerCreepUsePower extends PowerCreep {
         for(const resource in COMMODITIES[memory.factoryTask].components) {
             if(this.room.storage[resource] < 3000) return false;
         }
-
+        // 已有效果未结束时不处理
         if(factory.effects && factory.effects.some(e => e.effect == PWR_OPERATE_FACTORY && e.ticksRemaining > 0)) return false;
-        const powers = this.powers;
-        if(PWR_OPERATE_FACTORY in powers && powers[PWR_OPERATE_FACTORY].cooldown <= 0) {
+        // 有技能且未冷却时使用
+        if(this.powers[PWR_OPERATE_FACTORY]?.cooldown <= 0) {
             if(!factory) return false;
-            if(factory.level && factory.level !== powers[PWR_OPERATE_FACTORY].level) return false;
+            if(factory.level && factory.level !== this.powers[PWR_OPERATE_FACTORY].level) return false;
             if(!factory.level && 
-                memory.factoryLevel != powers[PWR_OPERATE_FACTORY].level)
+                memory.factoryLevel != this.powers[PWR_OPERATE_FACTORY].level)
                 return false;
 
             if (this.pos.inRangeTo(factory, 3)) {
@@ -75,10 +75,11 @@ export default class PowerCreepUsePower extends PowerCreep {
     Operate_Spawn() {
         if(!this.room.spawn) return false;
         if(this.store[RESOURCE_OPS] < 100) return false;
-        const roles = ['power-attack', 'power-heal', 'power-carry', 'deposit-harvest', 'deposit-transport']
-        if(this.room.getSpawnMissionTotalByRoles(roles) < 3) return false;
+        const roles = ['deposit-harvest', 'deposit-transport']
+        if (Object.keys(this.room.memory['powerMine']).length == 0 &&
+            this.room.getSpawnMissionTotalByRoles(roles) < 3) return false;
         const powers = this.powers;
-        if(PWR_OPERATE_SPAWN in powers && powers[PWR_OPERATE_SPAWN].cooldown <= 0){
+        if (PWR_OPERATE_SPAWN in powers && powers[PWR_OPERATE_SPAWN].cooldown <= 0){
             const spawns = this.room.spawn;
             if(!spawns) return false;
             const spawn = spawns.find(s => !s.effects || !s.effects.some(e => e.effect == PWR_OPERATE_SPAWN && e.ticksRemaining > 0));
@@ -94,6 +95,7 @@ export default class PowerCreepUsePower extends PowerCreep {
     }
     Operate_Power() {
         if(!this.room.powerSpawn) return false;
+        if(!global.BotMem('structures', this.room.name).powerSpawn) return false;
         if(this.store[RESOURCE_OPS] < 200) return false;
         if(this.room.storage.store[RESOURCE_POWER] < 5000) return false;
         const powers = this.powers;

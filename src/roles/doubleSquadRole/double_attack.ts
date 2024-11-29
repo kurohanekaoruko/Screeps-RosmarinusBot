@@ -13,7 +13,8 @@ const getheal = function (creep: Creep) {
 
 const double_attack_action = {
     move: function (creep: Creep) {
-        const moveflag = Game.flags[creep.name + '-move'];
+        const name = creep.name.match(/#(\w+)/)?.[0] ?? creep.name;
+        const moveflag = Game.flags[name + '-move'];
         if(moveflag && !creep.pos.inRangeTo(moveflag.pos, 0)) {
             if(creep.room.name !== moveflag.pos.roomName) {
                 creep.memory.targetRoom = moveflag.pos.roomName;
@@ -44,7 +45,8 @@ const double_attack_action = {
     },
     attack: function (creep: Creep) {
         // 索敌进攻
-        const aFlag = Game.flags[creep.name + '-attack'];
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
+        const aFlag = Game.flags[name + '-attack'];
         if(aFlag && creep.room.name !== aFlag.pos.roomName) {
             creep.memory.targetRoom = aFlag.pos.roomName;
             return true;

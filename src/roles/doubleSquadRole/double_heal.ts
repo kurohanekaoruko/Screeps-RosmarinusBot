@@ -9,6 +9,10 @@ const double_heal = function (creep: Creep) {
         creep.memory.boosted = creep.boost(boost);
         return
     }
+    if(creep.ticksToLive < 100 && creep.room.my) {
+        creep.unboost();
+        return;
+    }
 
     let healed = false;
 
@@ -18,7 +22,8 @@ const double_heal = function (creep: Creep) {
     }
 
     if(!creep.memory.bind) {
-        const moveflag = Game.flags[creep.name + '-move'];
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
+        const moveflag = Game.flags[name + '-move'];
         if(!moveflag || creep.pos.inRangeTo(moveflag.pos, 0)) return;
         if(creep.room.name !== moveflag.pos.roomName) { creep.memory.targetRoom = moveflag.pos.roomName }
         creep.moveTo(moveflag, { visualizePathStyle: { stroke: '#00ff00' } });

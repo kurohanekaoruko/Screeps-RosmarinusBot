@@ -29,10 +29,10 @@ export default {
             const room = Game.rooms[roomName];
             const result = Game.powerCreeps[pcname].spawn(room.powerSpawn);
             if(result === OK) {
-                console.log(`${roomName} 的 powerSpawn 孵化了 powerCreep ${pcname} `);
+                console.log(`${roomName} 的 PowerSpawn 孵化了 PowerCreep 【${pcname}】 `);
             }
             else {
-                console.log(`${roomName} 的 powerSpawn 孵化 powerCreep ${pcname} 失败，错误码 ${result}`);
+                console.log(`${roomName} 的 PowerSpawn 孵化 PowerCreep 【${pcname}】 失败，错误码：${result}`);
             }
             return OK;
         },

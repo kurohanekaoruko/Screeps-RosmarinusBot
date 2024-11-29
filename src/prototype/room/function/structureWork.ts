@@ -1,4 +1,5 @@
-import { RoleData, RoleLevelData } from '@/constant/CreepConstant'
+import { RoleData, RoleLevelData } from '@/constant/CreepConstant';
+import { CompoundColor } from '@/constant/ResourceConstant';
 
 /**
  * 管理建筑物的工作
@@ -34,6 +35,7 @@ export default class StructureWork extends Room {
 
         // 处理 Spawn 孵化逻辑
         if (Game.time % 10) return;
+        if (this.energyAvailable < 300) return;
         if (!this.checkMissionInPool('spawn')) return;
 
         // 获取当前房间的等级，如果房间扩展不足，则返回较低的等级
@@ -43,7 +45,6 @@ export default class StructureWork extends Room {
         // 如果有能量，则生产 creep
         this.spawn.forEach(spawn => {
             if (!spawn || spawn.spawning) return;
-            if (this.energyAvailable < 300) return;
             const task = this.getSpawnMission();
             if (!task) return;
             if (!task.data?.memory?.role) {
@@ -68,11 +69,9 @@ export default class StructureWork extends Room {
             }
             const result = spawn.spawnCreep(bodypart, name, { memory: data.memory });
             if (result == OK) {
-                if(global.CreepNum[this.name]) {
-                    global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
-                } else {
-                    global.CreepNum[this.name] = { [role]: 1 };
-                }
+                if (!global.CreepNum) global.CreepNum = {};
+                if (!global.CreepNum[this.name]) global.CreepNum[this.name] = {};
+                global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
                 this.submitSpawnMission(task.id);
                 return;
             } else {
@@ -184,7 +183,7 @@ export default class StructureWork extends Room {
                 controllerLink = link;
                 continue;
             }
-            if(link.pos.inRangeTo(this.storage, 2)) {
+            if(link.pos.inRangeTo(this.storage, 1) || link.pos.inRangeTo(this.terminal, 1)) {
                 manageLink = link;
                 continue;
             }
@@ -198,21 +197,23 @@ export default class StructureWork extends Room {
         for (let sourceLink of sourceLinks) {
             if(sourceLink.cooldown != 0) continue;  // 如果 Link 在冷却中，则跳过
             if(sourceLink.store[RESOURCE_ENERGY] < 400) continue;  // 如果 Link 的能量不足，则跳过
+
             if (controllerLink && controllerLink.store[RESOURCE_ENERGY] < 400 && !transferOK.controllerLink) {
                 sourceLink.transferEnergy(controllerLink);  // 传输能量
                 transferOK.controllerLink = true;
                 continue;
             }
+
+            const nlink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
+            if (nlink) {
+                sourceLink.transferEnergy(nlink);  // 传输能量
+                transferOK[nlink.id] = true;
+                continue;
+            }
+
             if (manageLink && manageLink.store[RESOURCE_ENERGY] < 400 && !transferOK.manageLink) {
                 sourceLink.transferEnergy(manageLink);  // 传输能量
                 transferOK.manageLink = true;
-                continue;
-            }
-            if(!normalLink || normalLink.length < 1) continue;
-            const nl = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
-            if (nl) {
-                sourceLink.transferEnergy(nl);  // 传输能量
-                transferOK[nl.id] = true;
                 continue;
             }
 
@@ -226,7 +227,7 @@ export default class StructureWork extends Room {
                 return;
             }
         }
-        if (manageLink && manageLink.store[RESOURCE_ENERGY] > 400){
+        if (manageLink && manageLink.cooldown == 0 && manageLink.store[RESOURCE_ENERGY] > 400){
             normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400);
             if (normalLink) {
                 manageLink.transferEnergy(normalLink[0]);  // 传输能量
@@ -236,6 +237,17 @@ export default class StructureWork extends Room {
     }
 
     LabWork() {
+        this.lab.forEach(lab => {
+            if (!lab.mineralType) return;
+            this.visual.text(lab.mineralType,
+                lab.pos.x, lab.pos.y,
+                { align: 'center',
+                  color: CompoundColor[lab.mineralType],
+                  stroke: '#2a2a2a',
+                  strokeWidth: 0.02,
+                  font: '0.24 inter' }
+            )
+        })
         // 每 5 tick 执行一次
         if (Game.time % 5 !== 1) return;
         // lab数量不足时不合成
@@ -264,26 +276,29 @@ export default class StructureWork extends Room {
         let otherLabs = this.lab
             .filter(lab => lab.id !== memory.labA && lab.id !== memory.labB &&
                     lab && lab.cooldown === 0);
+        // boost设置
+        const botmem =  global.BotMem('structures', this.name, 'boostTypes');
         // 遍历其他lab进行合成
         for (let lab of otherLabs) {
-            // 检查lab中是否存在与合成产物不同的资源
+            // 合成产物
             const labProduct = REACTIONS[labAtype][labBtype] as ResourceConstant;
+            // 如果有boost并且boost类型与合成产物不同，则跳过
+            if(botmem[lab.id] && botmem[lab.id] != labProduct) continue;
+            // 检查lab中是否存在与合成产物不同的资源
             if (lab.mineralType && lab.mineralType !== labProduct) {
                 continue; // 如果存在不同的资源，跳过这个lab
             }
-
             // 检查lab是否已满
             if (lab.store.getFreeCapacity(labProduct) === 0) {
                 continue; // 如果lab已满，跳过这个lab
             }
-            
             // 尝试进行合成
             lab.runReaction(labA, labB);
         }
     }
 
     TerminalWork() {
-        if (Game.time % 50 !== 2) return;
+        if (Game.time % 30 !== 2) return;
         const terminal = this.terminal;
         if (!terminal || terminal.cooldown !== 0) return;
 
@@ -314,15 +329,18 @@ export default class StructureWork extends Room {
     FactoryWork() {
         if (Game.time % 10 !== 1) return;  // 每 10 tick 执行一次
         const memory =  global.BotMem('structures', this.name);
+        // 关停时不处理
         if(!memory || !memory.factory) return;
         const factory = this.factory;
+        // 工厂不存在时不处理
         if(!factory) return;
+        // 冷却时不处理
         if(factory.cooldown != 0) return;
+        // 没有任务时不处理
         const task = memory.factoryTask;
         if(!task) return;
 
         const result = factory.produce(task);
-
         if(result !== OK) {
             if(factory.store[memory.factoryTask] > 0) {
                 this.ManageMissionAdd('f', 's', memory.factoryTask, factory.store[memory.factoryTask]);

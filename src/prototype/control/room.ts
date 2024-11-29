@@ -69,6 +69,16 @@ export default {
             if(botMem['spup']) global.log(`冲级数量为 ${botMem['spup']}。`);
             return OK;
         },
+        // 加速刷墙
+        spre(roomName: string, num?: number) {
+            const room = Game.rooms[roomName];
+            if(!room || !room.my) return Error(`房间 ${roomName} 不存在或未拥有。`);
+            const botMem = global.BotMem('rooms', roomName);
+            botMem['spre'] = Math.floor(num ?? 0);
+            global.log(`已设置 ${roomName} 的加速刷墙状态为 ${botMem['spre'] ? '开启' : '关闭'}。`);
+            if(botMem['spre']) global.log(`加速刷墙数量为 ${botMem['spre']}。`);
+            return OK;
+        },
         // 添加中央搬运任务
         manage(roomName: string, source: 's'|'t'|'f'|'l', target: 's'|'t'|'f'|'l', type: string, amount: number) {
             const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;

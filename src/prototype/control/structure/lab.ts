@@ -89,7 +89,7 @@ export default {
             }
             return OK;
         },
-        auto(roomName: string, res: string) {
+        auto(roomName: string, res: string, num: number=10000) {
             const room = Game.rooms[roomName];
             if(!room || !room.my) {
                 global.log(`房间 ${roomName} 不存在或未拥有。`);
@@ -100,12 +100,13 @@ export default {
                 return;
             }
             const BotMemStructures =  global.BotMem('autoLab');
-            if(!BotMemStructures[roomName]) BotMemStructures[roomName] = [];
-            if(!BotMemStructures[roomName].includes(res)) {
-                BotMemStructures[roomName].push(res);
-                global.log(`已添加 ${roomName} 的自动lab合成: ${res}`);
+            if(!BotMemStructures[roomName]) BotMemStructures[roomName] = {};
+
+            if(num > 0) {
+                BotMemStructures[roomName][res] = num;
+                global.log(`已设置 ${roomName} 的自动lab合成: ${res} - ${num}`);
             } else {
-                BotMemStructures[roomName].splice(BotMemStructures[roomName].indexOf(res), 1);
+                delete BotMemStructures[roomName][res];
                 global.log(`已删去 ${roomName} 的自动lab合成: ${res}`);
             }
             return OK;
