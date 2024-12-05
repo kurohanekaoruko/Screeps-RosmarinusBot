@@ -1,5 +1,6 @@
 import clear from 'rollup-plugin-clear';
-import screeps from 'rollup-plugin-screeps';
+// import screeps from 'rollup-plugin-screeps';
+import screeps from './rollup-plugin-screeps'; // 修改过的版本, 解决了上传wasm文件有重复后缀的问题
 import copy from 'rollup-plugin-copy';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +10,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import alias from '@rollup/plugin-alias';
 import { fileURLToPath } from 'url';
 import typescript from 'rollup-plugin-typescript2';
-// import terser from '@rollup/plugin-terser';
+// import terser from '@rollup/plugin-terser'; // 压缩代码
 
 const isProduction = process.env.DEST === 'main';
 
@@ -28,6 +29,14 @@ const runCopy = () => {
         targets: [
             {
                 src: 'dist/main.js',
+                dest: config.copyPath
+            },
+            {
+                src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
+                dest: config.copyPath
+            },
+            {
+                src: 'src/planner/dynamic/autoPlanner63.js',
                 dest: config.copyPath
             },
             {
@@ -80,7 +89,20 @@ export default {
                 replacement: path.resolve(__dirname, 'src')
             }]
         }),
+        copy({
+            targets: [
+                {
+                    src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
+                    dest: 'dist'
+                },
+                {
+                    src: 'src/planner/dynamic/autoPlanner63.js',
+                    dest: 'dist'
+                }
+            ]
+        }),
         // 执行上传或者复制
         pluginDeploy
-    ]
+    ],
+    external: ['src/planner/dynamic/algo_wasm_priorityqueue.wasm']
 };

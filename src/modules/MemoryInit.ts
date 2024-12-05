@@ -8,6 +8,7 @@ export const MemoryInit = {
         if(!BotMemory['autoMarket']) BotMemory['autoMarket'] = {};
         if(!BotMemory['autoSend']) BotMemory['autoSend'] = {};
         if(!BotMemory['autoLab']) BotMemory['autoLab'] = {};
+        if(!BotMemory['autoFactory']) BotMemory['autoFactory'] = {};
         
     }
 }

@@ -2,20 +2,17 @@
 export const Statistics = {
     init: function() {
         if (!Memory.stats) Memory.stats = {}
-        if (!Memory.stats.gcl) Memory.stats.gcl = 0
-        if (!Memory.stats.gclLevel) Memory.stats.gclLevel = 0
-        if (!Memory.stats.gpl) Memory.stats.gpl = 0
     },
     tickEnd: function() {
         if (Game.time % 20 !== 1) return     // 每 20 个 tick 执行一次, 且确保错开
-        updateCPUinfo();    // 统计 CPU 使用量
+        updateCPUinfo();       // 统计 CPU 使用量
         updateGclGpl();        // 统计 GCL / GPL 的升级百分比和等级
         updateGclGplSpeed();   // 统计 GCL / GPL 的升级速度
         updateRoomStats();     // 房间等级 & 房间能量储备
         updateRoomUpgradeTimeEstimate(); // 房间升级时间估计
         updateResourceStats(); // 资源统计
         updateCreepCount();    // Creep 数量
-        updateCreditInfo();         // credit变动情况
+        updateCreditInfo();    // credit变动情况
     }
 }
 
@@ -58,16 +55,28 @@ function updateGclGplSpeed() {
     const timeDelta = (Date.now() - (Number(Memory.stats.previousTimestamp) || Date.now())) / 1000;    // 100tick时间差
     Memory.stats.previousTimestamp = Date.now();    // 记录当前时间戳
     Memory.stats.tickTime = timeDelta / 100;    // 每个tick的时间
+
     const gclIncrement = Game.gcl.progress - (Number(Memory.stats.GclProgress) || Game.gcl.progress);    // GCL 的进度增量
-    Memory.stats.GclProgress = Game.gcl.progress;
     const gclRemaining = Game.gcl.progressTotal - Game.gcl.progress;    // GCL 的剩余进度
-    Memory.stats.gclUpTick = ((gclRemaining / gclIncrement) * 100) || 0;    // GCL 升级所需的tick数
-    Memory.stats.gclUpTime = ((gclRemaining / gclIncrement) * timeDelta) || 0;    // GCL 预计升级所需时间
+    Memory.stats.GclProgress = Game.gcl.progress;   // GCL 的当前进度
+    if (gclIncrement > 0) {
+        Memory.stats.gclUpTick = ((gclRemaining / gclIncrement) * 100) || 0;    // GCL 升级所需的tick数
+        Memory.stats.gclUpTime = ((gclRemaining / gclIncrement) * timeDelta) || 0;    // GCL 预计升级所需时间
+    } else {
+        Memory.stats.gclUpTick = 0;
+        Memory.stats.gclUpTime = 0;
+    }
+
     const gplIncrement = Game.gpl.progress - (Number(Memory.stats.GplProgress) || Game.gpl.progress);    // GPL 的进度增量
-    Memory.stats.GplProgress = Game.gpl.progress;
-    const gplRemaining = Game.gpl.progressTotal - Game.gpl.progress;
-    Memory.stats.gplUpTick = ((gplRemaining / gplIncrement) * 100) || 0;    // GPL 升级所需的tick数
-    Memory.stats.gplUpTime = ((gplRemaining / gplIncrement) * timeDelta) || 0;    // GPL 预计升级所需时间
+    const gplRemaining = Game.gpl.progressTotal - Game.gpl.progress;    // GPL 的剩余进度
+    Memory.stats.GplProgress = Game.gpl.progress;    // GPL 的当前进度
+    if (gplIncrement > 0) {
+        Memory.stats.gplUpTick = ((gplRemaining / gplIncrement) * 100) || 0;    // GPL 升级所需的tick数
+        Memory.stats.gplUpTime = ((gplRemaining / gplIncrement) * timeDelta) || 0;    // GPL 预计升级所需时间
+    } else {
+        Memory.stats.gplUpTick = 0;
+        Memory.stats.gplUpTime = 0;
+    }
 }
 
 
@@ -81,14 +90,22 @@ function updateRoomStats() {
     stats.energy = {};
     stats.energyRise = {};
     stats.SpawnEnergy = {};
+    let roomCount = 0;
     for (const room of Object.values(Game.rooms)) {
         if (!room.controller?.my) continue;
+        roomCount++;
         const roomName = room.name;
         const controller = room.controller;
         // 等级信息
         stats.rclLevel[roomName] = controller.level;    // 房间等级
-        stats.rclProgress[roomName] = (controller.progress / controller.progressTotal) * 100;    // 房间升级百分比
-        stats.rcl[roomName] = stats.rclLevel[roomName] + (stats.rclProgress[roomName]/100);    // 房间等级(浮点数)
+        if (controller.level < 8) {
+            stats.rclProgress[roomName] = (controller.progress / controller.progressTotal) * 100;    // 房间升级百分比
+            stats.rcl[roomName] = stats.rclLevel[roomName] + (stats.rclProgress[roomName]/100);    // 房间等级(浮点数)
+        } else {
+            stats.rclProgress[roomName] = 0;
+            stats.rcl[roomName] = stats.rclLevel[roomName];
+        }
+        
         // 能量储备
         const storageEnergy = room.storage?.store[RESOURCE_ENERGY] || 0;
         const terminalEnergy = room.terminal?.store[RESOURCE_ENERGY] || 0;
@@ -96,6 +113,7 @@ function updateRoomStats() {
         stats.energyRise[roomName] = stats.energy[roomName] - stats.energyHistory[roomName] || 0;
         stats.SpawnEnergy[roomName] = room.energyCapacityAvailable;
     }
+    stats.roomCount = roomCount;
 }
 
 function updateRoomUpgradeTimeEstimate() {
@@ -113,17 +131,18 @@ function updateRoomUpgradeTimeEstimate() {
     for (const room of myRooms) {
         const roomName = room.name;
         const controller = room.controller;
-        const progressIncrement = controller.progress - (lastProgress[roomName] || controller.progress);
-        const progressRemaining = controller.progressTotal - controller.progress;
-
+    
+        const progressIncrement = controller.progress - (lastProgress[roomName] || controller.progress);    // 进度增量
+        const progressRemaining = controller.progressTotal - controller.progress;    // 剩余进度
         if (progressIncrement > 0) {
             const timeToUpgrade = progressRemaining / progressIncrement;
             stats.rclUpTime[roomName] = timeToUpgrade * timeDelta;
             stats.rclUpTick[roomName] = timeToUpgrade * 100;
         } else {
-            stats.rclUpTime[roomName] = Infinity;
-            stats.rclUpTick[roomName] = Infinity;
+            stats.rclUpTime[roomName] = 0;
+            stats.rclUpTick[roomName] = 0;
         }
+        
         lastProgress[roomName] = controller.progress;
     }
 
@@ -191,7 +210,11 @@ function updateResourceStats() {
 function updateCreepCount() {
     // Creep 数量
     Memory.stats.creeps = {};
-    for (const { memory: { role } } of Object.values(Game.creeps)) Memory.stats.creeps[role] = (Memory.stats.creeps[role] || 0) + 1;
+    let creepCount = 0;
+    for (const { memory: { role } } of Object.values(Game.creeps)) {
+        Memory.stats.creeps[role] = (Memory.stats.creeps[role] || 0) + 1;
+        creepCount++;}  // 统计所有 creep 的数量
+    Memory.stats.creepCount = creepCount;
 }
 
 function updateCreditInfo() {

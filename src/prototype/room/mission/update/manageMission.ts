@@ -1,3 +1,5 @@
+import {LabMap} from "@/constant/ResourceConstant";
+
 function UpdateManageMission(room: Room) {
     CheckTerminalResAmount(room);  // 检查终端资源预留数量，不足则补充
     CheckFactoryResAmount(room); // 检查工厂资源数量，补充或搬出
@@ -11,11 +13,19 @@ function CheckTerminalResAmount(room: Room) {
     // 发送任务资源数
     const sendTotal = room.getSendMissionTotalAmount();
     // 自动调度资源阈值
-    const SOURCE_ENERGY_THRESHOLD = 15000;
-    const SOURCE_RESOURCE_THRESHOLD = 6000;
-    const TARGET_ENERGY_THRESHOLD = 10000;
-    const TARGET_RESOURCE_THRESHOLD = 4000;
-    // 自动调度资源排除项
+    const THRESHOLD = {
+        source: {
+            RESOURCE_ENERGY: 15000,
+            default: 6000
+        },
+        target: {
+            RESOURCE_ENERGY: 10000,
+            default: 4000
+        }
+    }
+    Object.keys(LabMap).forEach((r) => { THRESHOLD.source[r] = 15000; THRESHOLD.target[r] = 10000 } )
+
+    // 自动平衡资源排除项
     const exclude: ResourceConstant[] = [
         RESOURCE_METAL, RESOURCE_BIOMASS, RESOURCE_SILICON, RESOURCE_MIST,
         RESOURCE_ALLOY, RESOURCE_CELL, RESOURCE_WIRE, RESOURCE_CONDENSATE,
@@ -46,7 +56,7 @@ function CheckTerminalResAmount(room: Room) {
             if(room.memory.AUTO_S2T === false) continue;
             if(exclude.includes(resourceType as ResourceConstant)) continue;
             // 当终端资源不足时，将storage资源补充到终端
-            const threshold = resourceType === RESOURCE_ENERGY ? TARGET_ENERGY_THRESHOLD : TARGET_RESOURCE_THRESHOLD;
+            const threshold = THRESHOLD.target[resourceType] || THRESHOLD.target.default;
             if (room.terminal.store[resourceType] >= threshold) continue;
             amount = Math.min(
                 room.storage.store[resourceType],
@@ -63,7 +73,7 @@ function CheckTerminalResAmount(room: Room) {
         if(sendTotal[resourceType]) continue;
         if(exclude.includes(resourceType as ResourceConstant)) continue;
         // 当终端资源过多，且storage有空间时，将终端多余资源转入storage
-        const threshold = resourceType === RESOURCE_ENERGY ? SOURCE_ENERGY_THRESHOLD : SOURCE_RESOURCE_THRESHOLD;
+        const threshold = THRESHOLD.source[resourceType] || THRESHOLD.source.default;
         if(room.terminal.store[resourceType] <= threshold) continue;
 
         const amount = room.terminal.store[resourceType] - threshold;
@@ -76,8 +86,8 @@ function CheckTerminalResAmount(room: Room) {
 function CheckFactoryResAmount(room: Room) {
     const factory = room.factory;
     if (!factory) return;
-    const task = global.BotMem('structures', room.name, 'factoryTask');
-    let resourceType = global.BaseConfig.RESOURCE_ABBREVIATIONS[task] || task;
+    const product = global.BotMem('structures', room.name, 'factoryProduct');
+    let resourceType = product;
     if (!resourceType) return;
     const components = COMMODITIES[resourceType].components;
 
@@ -90,11 +100,16 @@ function CheckFactoryResAmount(room: Room) {
 
     // 材料不足时补充
     for(const component in components){
-        if(factory.store[component] >= 3000) continue;
+        if(factory.store[component] >= 1000) continue;
         const amount = 3000 - factory.store[component];
-        if(amount < 1000) continue;
-        if(room.storage?.store[component] < amount) continue;
-        room.ManageMissionAdd('s', 'f', component, amount);
+        if((room.getResourceAmount(component)) < 1000) continue;
+
+        room.ManageMissionAdd('s', 'f', component, Math.min(amount, room.storage.store[component]));
+        if(room.storage.store[component] < amount) {
+            room.ManageMissionAdd('t', 'f', component,
+                Math.min(amount - room.storage.store[component],
+                        room.terminal.store[component]));
+        }
     }
 
     // 产物过多时搬出

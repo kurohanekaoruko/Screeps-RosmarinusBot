@@ -106,6 +106,54 @@ export default {
                 return handleMarketTransaction(roomName, type, amount, ORDER_BUY, length, show, ecost);
             },
         },
+        // Id交易
+        dealid: {
+            buy(orderId: string, maxAmount: number=10000) {
+                const order = Game.market.getOrderById(orderId);
+                if (!order) return Error(`订单ID无效：${orderId}`);
+                if (order.type != ORDER_SELL) return Error(`订单不是卖单`);
+
+                let totalAmount = Math.min(maxAmount, order.amount);
+                for (const room of Object.values(Game.rooms)) {
+                    if (!room.terminal || room.terminal.cooldown > 0) continue;
+                    let amount = Math.min(totalAmount, room.terminal.store.getFreeCapacity());
+                    const cost = Game.market.calcTransactionCost(amount, room.name, order.roomName);
+                    if (room.terminal.store[RESOURCE_ENERGY] < cost) {
+                        amount = Math.floor(room.terminal.store[RESOURCE_ENERGY] / cost);
+                    }
+                    // if (amount <= 0) continue;
+                    const result = Game.market.deal(orderId, amount, room.name);
+                    if (result !== OK) {
+                        console.log(`房间 ${room.name} 交易失败：${result}`);
+                        continue;
+                    }
+                    totalAmount -= amount;
+                    console.log(`房间 ${room.name} 购买了 ${amount} 单位的 ${order.resourceType}, 传输成本${Game.market.calcTransactionCost(amount, room.name, order.roomName)}`);
+                    if (totalAmount <= 0) break;
+                }
+                totalAmount = Math.min(maxAmount, order.amount) - totalAmount;
+                console.log(`总共成功交易了${totalAmount}, 订单剩余${order.amount-totalAmount}`)
+                return OK;
+            },
+            sell(orderId: string, maxAmount: number=10000) {
+                const order = Game.market.getOrderById(orderId);
+                if (!order) return Error(`订单ID无效：${orderId}`);
+                if (order.type != ORDER_BUY) return Error(`订单不是买单`);
+                let totalAmount = Math.min(maxAmount, order.amount);
+                for (const room of Object.values(Game.rooms)) {
+                    if (!room.terminal || room.terminal.cooldown !== 0) continue;
+                    const amount = Math.min(totalAmount, room.terminal.store[order.resourceType]);
+                    if (amount <= 0) continue;
+                    const result = Game.market.deal(orderId, amount, room.name);
+                    if (result !== OK) continue;
+                    totalAmount -= amount;
+                    console.log(`房间 ${room.name} 出售了 ${amount} 单位的 ${order.resourceType}`);
+                    if (totalAmount <= 0) break;
+                }
+                totalAmount = Math.min(maxAmount, order.amount) - totalAmount;
+                console.log(`总共成功交易了${totalAmount}, 订单剩余${order.amount-totalAmount}`)
+            }
+        },
         // 自动市场交易
         auto: {
             list(roomName: string) {
@@ -248,43 +296,55 @@ function handleMarketTransaction(roomName: string, type: any, amount: number, or
         }
     });
 
-    let bestOrder = null;
-    let bestCost = (orderType === ORDER_SELL) ? Infinity : 0;
-    let bestDealAmount = 0;
-    let bestTransferEnergyCost = 0;
-    let bestResourceCost = 0;
+    let bestOrder = null;        // 最优订单
+    let bestPrice = (orderType === ORDER_SELL) ? Infinity : 0;
+    let bestDealAmount = 0;    // 最优订单的交易数量
+    let bestTransferCost = 0; // 最优订单的传输能量成本
+    let bestDealCredit = 0;    // 最优订单的交易金额
     const maxOrders = Math.min(orders.length, length);
     for (let i = 0; i < maxOrders; i++) {
-        const order = orders[i];    // 订单
-        const dealAmount = Math.min(amount, order.amount);  // 交易数量
-        const transferEnergyCost = Game.market.calcTransactionCost(dealAmount, roomName, order.roomName);  // 交易能量成本
-        const resourceCost = dealAmount * order.price;  // 交易金额
-        const ENERGY_COST_FACTOR = eCost;
+        // 订单对象
+        const order = orders[i];
+        // 交易数量
+        const dealAmount = Math.min(amount, order.amount);
+        // 传输成本
+        const transferEnergyCost = Game.market.calcTransactionCost(dealAmount, roomName, order.roomName);
+        // 交易金额
+        const dealCredit = dealAmount * order.price;
+        // 能量估算单价
+        const ENERGY_COST = eCost;
 
-        let cost = 0;
+        let price = 0;  // 综合单价
         if(type === RESOURCE_ENERGY) {
             if(orderType === ORDER_SELL) {
-                cost = resourceCost / (dealAmount - transferEnergyCost);  // 购买能量：交易金额÷(交易数量-传输消耗)=实际价格
+                // 购买能量：交易金额 ÷ (交易数量 - 传输消耗) = 实际综合单价
+                price = dealCredit / (dealAmount - transferEnergyCost);
             } else {
-                cost = resourceCost / (dealAmount + transferEnergyCost);  // 出售能量：交易金额÷(交易数量+传输消耗)=实际价格
+                // 出售能量：交易金额 ÷ (交易数量 + 传输消耗) = 实际综合单价
+                price = dealCredit / (dealAmount + transferEnergyCost);
             }
         } else {
             if(orderType === ORDER_SELL) {
-                cost = (resourceCost + transferEnergyCost * ENERGY_COST_FACTOR) / dealAmount;  // 购买资源：(交易金额+能量估算成本)÷实际到账数量=实际价格
+                // 购买资源：(交易金额 + 能量估算成本) ÷ 实际到账数量 = 实际综合单价
+                price = (dealCredit + transferEnergyCost * ENERGY_COST) / dealAmount;  
             } else {
-                cost = (resourceCost - transferEnergyCost * ENERGY_COST_FACTOR) / dealAmount;  // 出售资源：(交易金额-能量估算成本)÷实际消耗数量=实际价格
+                // 出售资源：(交易金额 - 能量估算成本) ÷ 实际消耗数量 = 实际综合单价
+                price = (dealCredit - transferEnergyCost * ENERGY_COST) / dealAmount;
             }
         }
 
-        if((orderType === ORDER_SELL && cost < bestCost) || (orderType === ORDER_BUY && cost > bestCost)) {
+        if ((orderType === ORDER_SELL && price < bestPrice) ||
+            (orderType === ORDER_BUY && price > bestPrice)) {
             bestOrder = order;
-            bestCost = cost;
-            bestResourceCost = resourceCost;
+            bestPrice = price;
+            bestDealCredit = dealCredit;
             bestDealAmount = dealAmount;
-            bestTransferEnergyCost = transferEnergyCost;
+            bestTransferCost = transferEnergyCost;
         }
 
-        if(show) console.log(`订单：${order.id} 交易数量：${dealAmount} 交易金额：${resourceCost.toFixed(4)} 交易能量成本：${transferEnergyCost} 单价：${order.price} 综合单价：${cost.toFixed(4)} 订单余量：${order.amount} 目标房间：${order.roomName}`);
+        if(show) console.log(`订单：${order.id} 交易数量：${dealAmount} 交易金额：${bestDealCredit.toFixed(4)}` +
+                        `交易能量成本：${transferEnergyCost} 单价：${order.price} 综合单价：${price.toFixed(4)}` +
+                        `订单余量：${order.amount} 目标房间：${order.roomName}`);
     }
 
     if (!bestOrder) {
@@ -293,8 +353,8 @@ function handleMarketTransaction(roomName: string, type: any, amount: number, or
     }
     else {
         console.log(`房间 ${roomName} 找到合适的${orderType === ORDER_SELL ? '出售' : '求购'} ${type} 订单：${bestOrder.id} 
-            交易数量：${bestDealAmount} 交易总金额：${bestResourceCost.toFixed(4)} 单价：${bestOrder.price}
-            目标房间：${bestOrder.roomName} 能量成本：${bestTransferEnergyCost} 综合单价：${bestCost.toFixed(4)}
+            交易数量：${bestDealAmount} 交易总金额：${bestDealCredit.toFixed(4)} 单价：${bestOrder.price}
+            目标房间：${bestOrder.roomName} 能量成本：${bestTransferCost} 综合单价：${bestPrice.toFixed(4)}
             订单余量：${bestOrder.amount}`);
     }
 
@@ -308,16 +368,16 @@ function handleMarketTransaction(roomName: string, type: any, amount: number, or
 
     const order = bestOrder;
     const dealAmount = bestDealAmount;
-    const transferEnergyCost = bestTransferEnergyCost;
-    const resourceCost = bestResourceCost;
+    const transferEnergyCost = bestTransferCost;
+    const dealCredit = bestDealCredit;
     const id = order.id;
     const result = Game.market.deal(id, dealAmount, roomName);
 
     if (result === OK) {
         console.log(`房间 ${roomName} 成功${orderType === ORDER_SELL ? '从' : '向'} ${order.roomName} ${orderType === ORDER_SELL ? '购买' : '出售'} ${dealAmount} 单位的 ${type}。`);
-        console.log(`交易金额：${resourceCost}`);
+        console.log(`交易金额：${dealCredit}`);
         console.log(`能量成本：${transferEnergyCost}`);
-        console.log(`综合单价：${bestCost}`);
+        console.log(`综合单价：${bestPrice}`);
     } else {
         console.log(`房间 ${roomName} ${orderType === ORDER_SELL ? '从' : '向'} ${order.roomName} ${orderType === ORDER_SELL ? '购买' : '出售'} ${type} 失败，错误代码：${result}`);
     }
@@ -339,7 +399,8 @@ function interShardMarket(type: any, amount: number, order: string, show: boolea
         if(show){
             console.log(`订单：${order.id} 单价${order.price} 订单余量：${order.amount}`);
         }
-        if(!bestOrder || (orderType === ORDER_SELL && order.price < bestPrice) || (orderType === ORDER_BUY && order.price > bestPrice)){
+        if (!bestOrder || (orderType === ORDER_SELL && order.price < bestPrice) ||
+            (orderType === ORDER_BUY && order.price > bestPrice)){
             bestOrder = order;
             bestDealAmount = Math.min(amount, order.amount);
             bestPrice = order.price;

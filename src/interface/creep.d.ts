@@ -5,7 +5,8 @@ interface Creep {
     moveToRoom(roomName: string, options?:{[key: string]: any}): any;
     double_move(target: any, color?: string): void;
 
-    takeEnergy(): void;
+    withdrawEnergy(): void;
+    goBoost(boostTypes: string[]): number;
     boost(boostTypes: string[]): boolean;
     unboost(): boolean;
     transferOrMoveTo(target: AnyCreep | Structure, resoureType: ResourceConstant, amount?: number): boolean;
@@ -16,8 +17,6 @@ interface Creep {
 }
 
 interface CreepMemory {
-    
-    /**creep 的角色*/
     role: string;
     dontPullMe: boolean;
     mission: Task;

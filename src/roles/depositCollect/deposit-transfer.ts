@@ -1,9 +1,9 @@
-const deposit_transport = {
+const deposit_transfer = {
     source: function(creep) {
         if((creep.memory.longMoveEnd||0) > 0 && (creep.memory.longMoveStart||0) > 0) {
             let tick = creep.memory.longMoveEnd - creep.memory.longMoveStart;
             if(tick < 0) tick = 0;
-            if (creep.ticksToLive < tick + 20 && creep.store.getUsedCapacity() > 0) {
+            if (creep.ticksToLive < tick + 25 && creep.store.getUsedCapacity() > 0) {
                 return true
             }
         }
@@ -13,35 +13,47 @@ const deposit_transport = {
             }
         }
 
+        const target = Game.getObjectById(creep.memory.cache.targetId) as any;
+        const targetType = creep.memory.cache.targetType;
+        if (target) {
+            if (targetType === 'dropped' && target.amount > 0) {
+                creep.pickupOrMoveTo(target);
+                return creep.store.getFreeCapacity() == 0;
+            } else if (targetType === 'tombstone' && target.store.getUsedCapacity() > 0) {
+                const resourceType = Object.keys(target.store).find(type => type !== RESOURCE_ENERGY);
+                creep.withdrawOrMoveTo(target, resourceType);
+                return creep.store.getFreeCapacity() == 0;
+            } else if (targetType === 'harvester' && !creep.pos.isNearTo(target)) {
+                creep.moveTo(target);
+                return false;
+            }
+        }
+
         const droppedResources = creep.room.find(FIND_DROPPED_RESOURCES).filter(s => s.resourceType !== RESOURCE_ENERGY);
         if (droppedResources.length > 0) {
             const closestResource = creep.pos.findClosestByRange(droppedResources);
-            if (creep.pos.inRangeTo(closestResource, 1)) {
-                creep.pickup(closestResource)
-            }
-            else{
-                creep.moveTo(closestResource, { visualizePathStyle: { stroke: '#ffaa00' } });
-            }
+            creep.memory.targetId = closestResource.id;
+            creep.memory.cache.targetType = 'dropped';
+            creep.pickupOrMoveTo(closestResource);
             return creep.store.getFreeCapacity() == 0;
         }
         const tombstones = creep.room.find(FIND_TOMBSTONES, {
-            filter: s => s.store.getUsedCapacity() > 0 && Object.keys(s.store).some(type => type !== RESOURCE_ENERGY)
+            filter: (s:any) => s.store.getUsedCapacity() > 0 && Object.keys(s.store).some(type => type !== RESOURCE_ENERGY)
         });
         if (tombstones.length > 0) {
             const closestTombstone = creep.pos.findClosestByRange(tombstones);
-            if (creep.pos.inRangeTo(closestTombstone, 1)) {
-                const resourceType = Object.keys(closestTombstone.store).find(type => type !== RESOURCE_ENERGY);
-                creep.withdraw(closestTombstone, resourceType);
-            } else {
-                creep.moveTo(closestTombstone, { visualizePathStyle: { stroke: '#ffaa00' } });
-            }
+            creep.memory.targetId = closestTombstone.id;
+            creep.memory.cache.targetType = 'tombstone';
+            const resourceType = Object.keys(closestTombstone.store).find(type => type !== RESOURCE_ENERGY);
+            creep.withdrawOrMoveTo(closestTombstone, resourceType);
             return creep.store.getFreeCapacity() == 0;
         }
 
         if(!creep.memory.longMoveStart) creep.memory.longMoveStart = Game.time;
         if (creep.room.name != creep.memory.targetRoom || creep.pos.isRoomEdge()) {
             let opt = {};
-            if (creep.room.name != creep.memory.homeRoom) opt = { ignoreCreeps: false };
+            if (creep.room.name != creep.memory.homeRoom)
+                opt = { ignoreCreeps: false };
             creep.moveToRoom(creep.memory.targetRoom, opt);
             return;
         }
@@ -56,19 +68,26 @@ const deposit_transport = {
                 filter: (creep: Creep) => creep.store.getFreeCapacity() == 0
             });
             if (!closestHarvester) closestHarvester = creep.pos.findClosestByRange(harvesters);
-            if (!creep.pos.inRangeTo(closestHarvester, 1)) {
+            if (!creep.pos.isNearTo(closestHarvester)) {
+                creep.memory.cache.targetId = closestHarvester.id;
+                creep.memory.cache.targetType = 'harvester';
                 creep.moveTo(closestHarvester, { visualizePathStyle: { stroke: '#00ff00' }, ignoreCreeps: false });
+                return creep.store.getFreeCapacity() == 0;
             }
         }
 
-        const deposit = creep.pos.findClosestByRange(creep.room.deposit ?? []);
-        if (deposit && creep.pos.inRangeTo(deposit, 3)) {
-            creep.moveTo(deposit, {
-                visualizePathStyle: { stroke: '#00ff00' },
-                ignoreCreeps: false,
-                range: 3
-            });
+        const deposits = creep.room.deposit || creep.room.find(FIND_DEPOSITS);
+        if (deposits.length == 1) {
+            const deposit = deposits[0];
+            if (deposit && !creep.pos.inRangeTo(deposit, 3)) {
+                creep.moveTo(deposit, {
+                    visualizePathStyle: { stroke: '#00ff00' },
+                    ignoreCreeps: false,
+                    range: 3
+                });
+            }
         }
+        
         if (!creep.memory.longMoveEnd) creep.memory.longMoveEnd = Game.time;
 
         return creep.store.getFreeCapacity() == 0
@@ -76,7 +95,8 @@ const deposit_transport = {
     target: function(creep) {
         if (creep.room.name != creep.memory.homeRoom || creep.pos.isRoomEdge()) {
             let opt = {};
-            if (creep.room.name != creep.memory.targetRoom) opt = { ignoreCreeps: false };
+            if (creep.room.name != creep.memory.targetRoom)
+                opt = { ignoreCreeps: false };
             creep.moveToRoom(creep.memory.homeRoom, opt);
             return;
         }
@@ -87,6 +107,10 @@ const deposit_transport = {
             const resourceType = Object.keys(creep.store)[0];
             if (creep.pos.inRangeTo(target, 1)) {
                 creep.transfer(target, resourceType);
+                if ((creep.memory.longMoveEnd||0) > 0 && (creep.memory.longMoveStart||0) > 0 &&
+                    (creep.memory.longMoveEnd - creep.memory.longMoveStart) > creep.ticksToLive) {
+                    creep.suicide();
+                }
             } else {
                 creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
             }
@@ -99,4 +123,4 @@ const deposit_transport = {
     }
 }
 
-export default deposit_transport;
+export default deposit_transfer;

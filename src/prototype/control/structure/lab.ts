@@ -12,7 +12,7 @@ export default {
             const BotMemStructures =  global.BotMem('structures');
             if(!BotMemStructures[roomName]) BotMemStructures[roomName] = {};
             BotMemStructures[roomName]['lab'] = true;
-            global.log(`已开启 ${roomName} 的lab合成。`);
+            global.log(`[${roomName}] 已开启lab合成。`);
             return OK;
         },
         // 关闭lab
@@ -25,22 +25,30 @@ export default {
             const BotMemStructures =  global.BotMem('structures');
             if(!BotMemStructures[roomName]) BotMemStructures[roomName] = {};
             BotMemStructures[roomName]['lab'] = false;
-            global.log(`已关闭 ${roomName} 的lab合成。`);
+            global.log(`[${roomName}] 已关闭lab合成。`);
             return OK;
         },
         // 设置lab合成底物
-        set(roomName: string, A: string, B: string) {
+        set(roomName: string, A: string, B: string, amount: number = 0) {
             const RES = global.BaseConfig.RESOURCE_ABBREVIATIONS;
             const room = Game.rooms[roomName];
             if(!room || !room.my) {
                 global.log(`房间 ${roomName} 不存在或未拥有。`);
                 return;
             }
+            A = RES[A] || A; B = RES[B] || B;
+            if (!REACTIONS[A] || !REACTIONS[A][B]) {
+                global.log(`资源 ${RES[A] || A} 或 ${RES[B] || B} 不存在有效合成。`);
+                return;
+            }
             const BotMemStructures =  global.BotMem('structures');
             if(!BotMemStructures[roomName]) BotMemStructures[roomName] = {};
-            BotMemStructures[roomName]['labAtype'] = RES[A] || A;
-            BotMemStructures[roomName]['labBtype'] = RES[B] || B;
-            global.log(`已设置 ${roomName} 的lab合成底物为 ${RES[A] || A} 和 ${RES[B] || B}。`);
+            if (A && B) {
+                BotMemStructures[roomName]['labAtype'] = A;
+                BotMemStructures[roomName]['labBtype'] = B;
+                BotMemStructures[roomName]['labAmount'] = Math.max(0, amount);
+                global.log(`[${roomName}] 已设置lab合成底物为 ${A} 和 ${B}。`);
+            }
             const labAflag = Game.flags[`labA`] || Game.flags[`lab-A`];
             const labBflag = Game.flags[`labB`] || Game.flags[`lab-B`];
             if(labAflag && labBflag && labAflag.pos.roomName === roomName && labBflag.pos.roomName === roomName) {
@@ -48,12 +56,12 @@ export default {
                 const labB = labBflag.pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType === STRUCTURE_LAB);
                 BotMemStructures[roomName]['labA'] = labA.id;
                 BotMemStructures[roomName]['labB'] = labB.id;
-                global.log(`已设置 ${roomName} 的底物lab为 ${labA.id} 和 ${labB.id}。`);
+                global.log(`[${roomName}] 已设置底物lab为 ${labA.id} 和 ${labB.id}。`);
                 labAflag.remove();
                 labBflag.remove();
             }
             BotMemStructures[roomName]['lab'] = true;
-            global.log(`已开启 ${roomName} 的lab合成。`);
+            global.log(`[${roomName}] 已开启lab合成。`);
             return OK;
         },
         setboost(roomName: string, res?: string) {
@@ -89,7 +97,7 @@ export default {
             }
             return OK;
         },
-        auto(roomName: string, res: string, num: number=10000) {
+        auto(roomName: string, res: string, amount: number=10000) {
             const room = Game.rooms[roomName];
             if(!room || !room.my) {
                 global.log(`房间 ${roomName} 不存在或未拥有。`);
@@ -102,12 +110,36 @@ export default {
             const BotMemStructures =  global.BotMem('autoLab');
             if(!BotMemStructures[roomName]) BotMemStructures[roomName] = {};
 
-            if(num > 0) {
-                BotMemStructures[roomName][res] = num;
-                global.log(`已设置 ${roomName} 的自动lab合成: ${res} - ${num}`);
+            if(amount >= 0) {
+                BotMemStructures[roomName][res] = amount;
+                global.log(`已设置 ${roomName} 的自动lab合成: ${res} - ${amount}`);
             } else {
                 delete BotMemStructures[roomName][res];
                 global.log(`已删去 ${roomName} 的自动lab合成: ${res}`);
+            }
+            return OK;
+        },
+        autolist(roomName: string) {
+            const BotMemAutoFactory = global.BotMem('autoLab');
+            if(roomName) {
+                const autoLab = BotMemAutoFactory[roomName];
+                if(!autoLab || autoLab.length == 0) {
+                    global.log(`[${roomName}]没有开启自动lab合成`);
+                }
+                else {
+                    global.log(`[${roomName}]自动lab合成有: ${autoLab}`);
+                }
+                return OK;
+            }
+
+            if(!BotMemAutoFactory || Object.keys(BotMemAutoFactory).length == 0) {
+                global.log(`没有房间开启自动lab合成`);
+            }
+            for(const room in BotMemAutoFactory) {
+                if(!BotMemAutoFactory[room] || BotMemAutoFactory[room].length == 0) {
+                    continue;
+                }
+                global.log(`[${room}]自动lab合成有: ${BotMemAutoFactory[room]}`);
             }
             return OK;
         }

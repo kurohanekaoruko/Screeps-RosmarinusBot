@@ -6,7 +6,9 @@ import ActiveDefend from "./function/activeDefend"
 import RoomRun from "./run"
 
 import AutoMarket from "./auto/autoMarket"
-import AutoLayout from "./auto/autoLayout"
+import AutoBuild from "./auto/autoBuild"
+import AutoLab from "./auto/autoLab"
+import AutoFactory from "./auto/autoFactory"
 
 import Mission from "./mission"
 import MissionPools from "./mission/pool/MissionPools"
@@ -21,7 +23,9 @@ const plugins = [
     OutMine,        // 外矿采集
     
     AutoMarket,     // 自动市场交易
-    AutoLayout,     // 自动布局
+    AutoBuild,      // 自动建筑
+    AutoLab,        // 自动Lab合成
+    AutoFactory,    // 自动Factory生产
     
     MissionPools,   // 任务池
     MissionAdd,     // 添加任务

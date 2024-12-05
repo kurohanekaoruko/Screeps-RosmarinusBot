@@ -8,7 +8,7 @@ function UpdateBuildRepairMission(room: Room) {
     const NORMAL_STRUCTURE_THRESHOLD = 0.8;     // 普通修复建筑耐久度阈值
     const URGENT_STRUCTURE_THRESHOLD = 0.1;     // 紧急修复建筑耐久度阈值
     const NORMAL_WALL_THRESHOLD = 0.001;        // 普通修复墙耐久度阈值
-    const URGENT_WALL_HITS = 2000;               // 紧急修复墙耐久度
+    const URGENT_WALL_HITS = 2000;              // 紧急修复墙耐久度
     
 
     // 维修优先级：紧急维修-建筑 > 紧急维修-墙 > 常规维修-建筑 > 常规维修-墙
@@ -47,19 +47,27 @@ function UpdateBuildRepairMission(room: Room) {
     for(const site of constructionSites) {
         const posInfo = `${site.pos.x}/${site.pos.y}/${site.pos.roomName}`
         const data = {target: site.id, pos: posInfo};
-        if(site.structureType === STRUCTURE_STORAGE || site.structureType === STRUCTURE_TERMINAL) {
-            room.BuildRepairMissionAdd('build', 0, data)
-            return;
+        let level = Math.floor((1 - site.progress / site.progressTotal) * 5);
+        if (site.structureType === STRUCTURE_EXTENSION) {
+            level += 5;
         }
-        const level = Math.floor((1 - site.progress / site.progressTotal) * 5);
+        else if (site.structureType === STRUCTURE_ROAD ||
+            site.structureType === STRUCTURE_CONTAINER) {
+            level += 10;
+        }
         room.BuildRepairMissionAdd('build', level, data)
     }
 }
 
 // 刷墙任务
 function UpdateWallRepairMission(room: Room) {
-    const WALL_HITS_MAX_THRESHOLD = 0.5;        // 墙最大耐久度阈值
+    let WALL_HITS_MAX_THRESHOLD = 0.5;        // 墙最大耐久度阈值
+    const botMem = global.BotMem('structures', room.name);
+    if (botMem['ram_threshold']) {
+        WALL_HITS_MAX_THRESHOLD = Math.min(botMem['ram_threshold'], 1);
+    }
     const memory = global.BotMem('layout', room.name);
+    if (!memory) return;
     const rampartMem = memory['rampart'] || [];
     const wallMem = memory['wall'] || [];
     const walls = room.find(FIND_STRUCTURES, {

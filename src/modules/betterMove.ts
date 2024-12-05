@@ -90,7 +90,7 @@ let avoidExits = {
     'fromRoom': 'toRoom'
 }   // 【未启用】单向屏蔽房间的一些出口，永不从fromRoom踏入toRoom
 /** @type {{id:string, roomName:string, taskQueue:{path:MyPath, idx:number, roomName:string}[]}[]} */
-let observers = [''];  // 如果想用ob寻路，把ob的id放这里
+let observers = ['67462d6550ae79d3384c6767'];  // 如果想用ob寻路，把ob的id放这里
 
 /***************************************
  *  局部缓存
@@ -1586,8 +1586,8 @@ if(!Creep.prototype.$moveTo) {
     Creep.prototype.$moveTo = Creep.prototype.moveTo;
     PowerCreep.prototype.$moveTo = Creep.prototype.moveTo;
     Creep.prototype.moveTo = function (target, ...e) {
-        if (target instanceof RoomPosition || target.pos) {
-            const pos = target instanceof RoomPosition ? target : target.pos;
+        if (target.pos || target) {
+            const pos = target.pos || target;
             if (!this.memory.lastTargetPos ||
                 this.memory.lastTargetPos.x !== pos.x ||
                 this.memory.lastTargetPos.y !== pos.y ||

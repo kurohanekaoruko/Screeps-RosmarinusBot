@@ -12,17 +12,18 @@ import miner from './mainRole/miner';
 import logistics from './logistics';
 import harvest_carry from './harvest_carry';
 import SpeedUpgrader from './spup';
-import claimer from './claimer';
-import lclaimer from './lclaimer';
+import SpeedRepair from './spre'
+import claimer from './claimRole/claimer';
+import lclaimer from './claimRole/lclaimer';
+import aclaimer from './claimRole/aclaimer';
+import dismantle from './dismantle';
 
 import double_attack from './doubleSquadRole/double_attack';
 import double_dismantle from './doubleSquadRole/double_dismantle';
-import double_carry from './doubleSquadRole/double_carry';
 import double_heal from './doubleSquadRole/double_heal';
-import double_tough from './doubleSquadRole/double_tough';
 import double_defender from './doubleSquadRole/double_defender';
 
-import outScout from './outCollect/outScout';
+import scout from './scout';
 import outHarvest from './outCollect/outHarvest';
 import outCarry from './outCollect/outCarry';
 import outBuild from './outCollect/outBuild';
@@ -37,17 +38,18 @@ import power_carry from './powerCollect/power-carry';
 import power_defend from './powerCollect/power-defend';
 
 import deposit_harvest from './depositCollect/deposit-harvest';
-import deposit_transport from './depositCollect/deposit-transport';
+import deposit_transfer from './depositCollect/deposit-transfer';
 
 import one_tough from './oneBody/one_tough';
+import one_ranged from './oneBody/one_ranged';
 
 
 
 
-export {harvester, carrier, transport, manage, upgrader, builder, repair, miner, logistics, 
-        harvest_carry, SpeedUpgrader, claimer, lclaimer};
-export { one_tough };
-export {double_attack, double_dismantle, double_carry, double_heal, double_tough, double_defender};
-export {outScout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack};
+export {harvester, carrier, transport, manage, upgrader, builder, repair, miner}
+export {logistics, harvest_carry, SpeedUpgrader, SpeedRepair, claimer, lclaimer, dismantle, aclaimer};
+export {one_tough, one_ranged};
+export {double_attack, double_dismantle, double_heal, double_defender};
+export {scout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack};
 export {power_attack, power_heal, power_carry, power_defend};
-export {deposit_harvest, deposit_transport};
+export {deposit_harvest, deposit_transfer};

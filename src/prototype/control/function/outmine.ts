@@ -13,7 +13,7 @@ export default {
                 if (!Mem['energy']) Mem['energy'] = [];
                 if (Mem['energy'].indexOf(targetRoom) === -1) {
                     Mem['energy'].push(targetRoom);
-                    console.log(`房间 ${targetRoom} 添加到 ${roomName} 的外矿列表。 `);
+                    console.log(`房间 ${targetRoom} 已添加到 ${roomName} 的外矿列表。 `);
                     return OK;
                 } else {
                     console.log(`房间 ${targetRoom} 已存在于 ${roomName} 的外矿列表中。 `);
@@ -25,7 +25,7 @@ export default {
                 if (!Mem['highway']) Mem['highway'] = [];
                 if (Mem['highway'].indexOf(targetRoom) === -1) {
                     Mem['highway'].push(targetRoom);
-                    console.log(`过道房间 ${targetRoom} 添加到 ${roomName} 的监控列表`);
+                    console.log(`过道房间 ${targetRoom} 已添加到 ${roomName} 的监控列表`);
                     return OK;
                 } else {
                     console.log(`过道房间 ${targetRoom} 已存在于 ${roomName} 的监控列表中。`);
@@ -34,7 +34,15 @@ export default {
             }
             // 中间房间
             else {
-                return ERR_NOT_FOUND;
+                if (!Mem['center']) Mem['center'] = [];
+                if (Mem['center'].indexOf(targetRoom) === -1) {
+                    Mem['center'].push(targetRoom);
+                    console.log(`中间房间 ${targetRoom} 已添加到 ${roomName} 的采矿列表`);
+                    return OK;
+                } else {
+                    console.log(`中间房间 ${targetRoom} 已存在于 ${roomName} 的采矿列表中。`);
+                    return OK;
+                }
             }
         },
         // 删除外矿
@@ -51,6 +59,7 @@ export default {
                 if (Mem['energy'].indexOf(targetRoom) === -1) return ERR_NOT_FOUND;
                 else {
                     Mem['energy'].splice(Mem['energy'].indexOf(targetRoom), 1);
+                    delete Memory.rooms[targetRoom]['road'];
                     console.log(`房间 ${targetRoom} 从 ${roomName} 的外矿列表中删除。`);
                     return OK;
                 }
@@ -110,27 +119,34 @@ export default {
             if (!room) return;
             if (!room.memory['powerMine']) room.memory['powerMine'] = {};
             room.memory['powerMine'][targetRoom] = num;
-            console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的power开采队。`);
+            console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的Power开采队。`);
             return OK;
         },
         // 立即开始到指定房间开采deposit
-        deposit(roomName: string, targetRoom: string, num: number[]) {
+        deposit(roomName: string, targetRoom: string, num: number) {
             if (!roomName || !targetRoom || !num) return -1;
             const room = Game.rooms[roomName];
             if (!room) return;
             if (!room.memory['depositMine']) room.memory['depositMine'] = {};
             room.memory['depositMine'][targetRoom] = num;
-            console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的deposit开采队。`);
+            console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的Deposit开采队。`);
             return OK;
         },
         // 取消指定房间的开采
         cancel(roomName: string, targetRoom: string, type: 'power' | 'deposit') {
             const room = Game.rooms[roomName];
             if (!room) return;
+            const spawnmission = room.getAllMissionFromPool('spawn');
             if ((!type || type == 'power') && room.memory['powerMine'])
                 delete room.memory['powerMine'][targetRoom]
             if ((!type || type == 'deposit') && room.memory['depositMine'])
                 delete room.memory['depositMine'][targetRoom]
+            for (const mission of spawnmission) {
+                const data = mission.data;
+                if (data.memory.targetRoom == targetRoom) {
+                    room.deleteMissionFromPool('spawn', mission.id);
+                }
+            }
             console.log(`房间 ${roomName} 的 ${targetRoom} 开采已取消。`);
             return OK;
         }

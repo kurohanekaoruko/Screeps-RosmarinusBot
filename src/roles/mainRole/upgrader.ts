@@ -60,7 +60,7 @@ const Upgrader = {
         else if(container && container.store[RESOURCE_ENERGY] > 0) {
             creep.withdrawOrMoveTo(container, RESOURCE_ENERGY);
         }
-        else if(!link) { creep.takeEnergy() }
+        else if(!link) { creep.withdrawEnergy() }
 
         if (creep.store.getFreeCapacity() === 0) {
             creep.say('⚡');

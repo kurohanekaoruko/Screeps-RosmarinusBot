@@ -107,7 +107,7 @@ const outCarry = {
         });
         if (nearestHarvester) {
             if(!creep.pos.inRangeTo(nearestHarvester, 2) || nearestHarvester.store[RESOURCE_ENERGY] > 0) {
-                outCarryMove(creep, nearestHarvester, { visualizePathStyle: { stroke: '#ffaa00' } });
+                outCarryMove(creep, nearestHarvester, { visualizePathStyle: { stroke: '#ffaa00' }, ignoreCreeps: false });
             }
             return;
         }

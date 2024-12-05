@@ -20,7 +20,7 @@ export default class StructureWork extends Room {
         if (!this.spawn) return;
         this.spawn.forEach(spawn => {
             if (!spawn.spawning) return;
-            const code = spawn.spawning.name.match(/<(\w+)>/)[1];
+            const code = spawn.spawning.name.match(/\[(\w+)\]/)?.[1];
             this.visual.text(
                 `${code} 🕒${spawn.spawning.remainingTime}`,
                 spawn.pos.x,
@@ -53,14 +53,14 @@ export default class StructureWork extends Room {
             }
             const data = task.data as SpawnTask;
             const role = data.memory.role;
-            const number = (Game.time*16 + Math.floor(Math.random()*16))
-                            .toString(16).slice(-4).toUpperCase();
-            const name = `<${data.name||RoleData[role].code}>#${number}`;
+            const number = (Game.time*36*36 + Math.floor(Math.random()*36*36))
+                            .toString(36).slice(-4).toUpperCase();
+            const name = `[${data.name||RoleData[role].code}]#${number}`;
             let body: Number[];
             if (data.body?.length > 0) {
                 body = data.body;
             } else {
-                body = RoleData[role]['adaption'] ? RoleLevelData[role][lv].bodypart : RoleData[role].ability
+                body = this.DynamicBodys(role);
             }
             const bodypart = this.GenerateBodys(body);
             if (!bodypart || bodypart.length == 0) {
@@ -77,10 +77,10 @@ export default class StructureWork extends Room {
             } else {
                 if (Game.time % 30) return;
                 if (hc && hc >= 2) return;
+                if (role !== 'harvester' && role !== 'transport' && role !== 'carrier') return;
                 const num = this.find(FIND_MY_CREEPS, {filter: c => c.memory.role == role}).length;
-                if ((role == 'harvester' && num == 0) ||
-                    (role == 'transport' && num == 0) ||
-                    (role == 'carrier' && this.level < 4 && num == 0)) {
+                if (num !== 0) return;
+                if (role !== 'carrier' || (role == 'carrier' && this.level < 4)) {
                     if (hc == null) {
                         hc = this.find(FIND_MY_CREEPS, {filter: c => c.memory.role == 'har-car'}).length +
                             (global.SpawnMissionNum[this.name]?.['har-car'] || 0)
@@ -108,7 +108,7 @@ export default class StructureWork extends Room {
         if (Game.time % 10 == 0) {
             global.towerTargets[this.name] = 
                 this.find(FIND_HOSTILE_CREEPS)
-                    .filter(c => !Memory['whitelist'].includes(c.owner.username))
+                    .filter(c => !Memory['whitelist']?.includes(c.owner.username))
                     .map(c => c.id);
         }
         let Hostiles = (global.towerTargets[this.name]||[])
@@ -128,15 +128,14 @@ export default class StructureWork extends Room {
         if (!global.towerHealTargets) global.towerHealTargets = {};
         if (Game.time % 10 == 0) {
             global.towerHealTargets[this.name] = this.find(FIND_MY_POWER_CREEPS, {
-                filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist'].includes(c.owner.username))
+                filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
                 }).map(c => c.id);
             if (global.towerHealTargets[this.name].length == 0) {
                 global.towerHealTargets[this.name] = this.find(FIND_CREEPS, {
-                    filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist'].includes(c.owner.username))
+                    filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
                 }).map(c => c.id);
             }
         }
-
         let healers = (global.towerHealTargets[this.name]||[])
                 .map((id: Id<Creep>) => Game.getObjectById(id))
                 .filter((c: Creep | null) => c) as Creep[] | PowerCreep[];
@@ -149,19 +148,31 @@ export default class StructureWork extends Room {
         }
 
         // 修复建筑物
-        const task = this.getMissionFromPool('repair');
-        if(!task) return;
-        const target = Game.getObjectById(task.data.target) as Structure;
-        if(!target) return;
-        if (target.hits >= task.data.hits) {
-            this.deleteMissionFromPool('repair', task.id);
-            return;
+        if (!global.towerTaskTarget) global.towerTaskTarget = {};
+        if (Game.time % 10 == 0) {
+            global.towerTaskTarget[this.name] = null;
+            if (this.checkMissionInPool('repair')) {
+                const task = this.getMissionFromPool('repair');
+                if(!task) return;
+                const target = Game.getObjectById(task.data.target) as Structure;
+                if(!target) return;
+                if (target.hits >= task.data.hits) {
+                    this.deleteMissionFromPool('repair', task.id);
+                    return;
+                }
+                global.towerTaskTarget[this.name] = target.id;
+            }
         }
-
-        towers.forEach(tower => {
-            if(tower.store[RESOURCE_ENERGY] < 500) return;  // 如果塔的能量不足一半，则不执行修复逻辑
-            tower.repair(target);
-        });
+        
+        const target = Game.getObjectById(global.towerTaskTarget[this.name]) as Structure;
+        if(target) {
+            towers.forEach(t => {
+                // 如果塔的能量不足一半，则不执行修复逻辑
+                if(t.store[RESOURCE_ENERGY] < 500) return;
+                t.repair(target);
+            });
+        }
+        
     }
     
     LinkWork() {
@@ -228,7 +239,7 @@ export default class StructureWork extends Room {
             }
         }
         if (manageLink && manageLink.cooldown == 0 && manageLink.store[RESOURCE_ENERGY] > 400){
-            normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400);
+            normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
             if (normalLink) {
                 manageLink.transferEnergy(normalLink[0]);  // 传输能量
                 return;
@@ -244,7 +255,7 @@ export default class StructureWork extends Room {
                 { align: 'center',
                   color: CompoundColor[lab.mineralType],
                   stroke: '#2a2a2a',
-                  strokeWidth: 0.02,
+                  strokeWidth: 0.05,
                   font: '0.24 inter' }
             )
         })
@@ -337,13 +348,13 @@ export default class StructureWork extends Room {
         // 冷却时不处理
         if(factory.cooldown != 0) return;
         // 没有任务时不处理
-        const task = memory.factoryTask;
-        if(!task) return;
+        const product = memory.factoryProduct;
+        if (!product) return;
 
-        const result = factory.produce(task);
-        if(result !== OK) {
-            if(factory.store[memory.factoryTask] > 0) {
-                this.ManageMissionAdd('f', 's', memory.factoryTask, factory.store[memory.factoryTask]);
+        const result = factory.produce(product);
+        if (result !== OK) {
+            if(factory.store[product] > 0) {
+                this.ManageMissionAdd('f', 's', product, factory.store[product]);
             }
         };
     }
@@ -353,6 +364,8 @@ export default class StructureWork extends Room {
 
         // 关停时不处理
         if(!global.BotMem('structures', this.name)?.powerSpawn) return;
+        // 能量不足不处理
+        if(this.getResourceAmount(RESOURCE_ENERGY) < 10000) return;
 
         const powerSpawn = this.powerSpawn;
         if(!powerSpawn) return;
@@ -360,4 +373,6 @@ export default class StructureWork extends Room {
         if(store[RESOURCE_ENERGY] < 50 || store[RESOURCE_POWER] < 1) return;
         powerSpawn.processPower();
     }
+
+
 }

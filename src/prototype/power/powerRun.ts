@@ -27,13 +27,11 @@ export default class PowerCreepRun extends PowerCreep {
 
 const PowerCreepAction = {
     'F': function(pc: PowerCreep) {
+        if(pc.transferPower())  return;      // 填充power
         if(pc.withdrawOPS())  return;      // 取出ops
         if(pc.Operate_Factory())  return;    // 操作工厂
     },
     'O': function(pc: PowerCreep) {
-        // const shield = Game.flags[`${pc.name}-shield`];
-        // if(shield && pc.Shield(shield.pos)) return;
-        
         if(pc.withdrawOPS())  return;      // 取出ops
         if(pc.Regen_Source())  return;  // 生成能量
         if(pc.Operate_Power())  return;  // 提高Power处理速率

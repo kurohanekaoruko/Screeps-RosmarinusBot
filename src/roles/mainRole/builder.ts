@@ -84,7 +84,7 @@ const UnitBuilder = {
     source: function (creep: Creep) {   // 获取能量
         if(!creep.memory.ready) return false;
         if(!creep.moveHomeRoom()) return;
-        creep.takeEnergy();
+        creep.withdrawEnergy();
         if(creep.store.getFreeCapacity() === 0) {
             creep.say('🚧');
             return true;

@@ -5,39 +5,50 @@ const power_carry = {
             return;
         }
 
-        const powerBank = creep.room.powerBank?.[0] ?? creep.room.find(FIND_STRUCTURES, {
+        // 靠近powerBank
+        const powerBank = creep.room.powerBank?.[0] || creep.room.find(FIND_STRUCTURES, {
             filter: (s) => s.structureType == STRUCTURE_POWER_BANK
         })[0];
         if (powerBank) {
+            creep.memory['powerBankId'] = powerBank.id;
             if (!creep.pos.inRangeTo(powerBank, 3)) {
                 creep.moveTo(powerBank, {range: 3, ignoreCreeps: false});
                 return false;
             }
         }
+
+        // 先处理内存里有的目标
+        let powerDropped: Resource, powerRuin: Ruin;
+        powerDropped = Game.getObjectById(creep.memory['powerDroppedId']) as Resource;
+        if (powerDropped) {
+            creep.pickupOrMoveTo(powerDropped);
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
+        }
+        powerRuin = Game.getObjectById(creep.memory['powerRuinId']) as Ruin;
+        if (powerRuin) {
+            creep.withdrawOrMoveTo(powerRuin, RESOURCE_POWER);
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
+        }
+        // 再处理能找到的目标
+        powerDropped = creep.room.find(FIND_DROPPED_RESOURCES,{filter: (r) => r.resourceType == RESOURCE_POWER})[0];
+        if (powerDropped) {
+            creep.memory['powerDroppedId'] = powerDropped.id;
+            creep.pickupOrMoveTo(powerDropped);
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
+        }
+        powerRuin = creep.room.find(FIND_RUINS,{filter: (r) => r.store.getUsedCapacity(RESOURCE_POWER) > 0})[0];
+        if (powerRuin) {
+            creep.memory['powerRuinId'] = powerRuin.id;
+            creep.withdrawOrMoveTo(powerRuin, RESOURCE_POWER);
+            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
+        }
         
-        const powerRuin = creep.room.find(FIND_RUINS,{filter: (r) => r.store.getUsedCapacity(RESOURCE_POWER) > 0});
-        if (powerRuin.length > 0) {
-            if (creep.pos.isNearTo(powerRuin[0])) {
-                creep.withdraw(powerRuin[0], RESOURCE_POWER);
-            } else {
-                creep.moveTo(powerRuin[0]);
-            }
-            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
-        }
-
-        const power = creep.room.find(FIND_DROPPED_RESOURCES,{filter: (r) => r.resourceType == RESOURCE_POWER});
-        if (power.length > 0) {
-            if (creep.pos.isNearTo(power[0])) {
-                creep.pickup(power[0]);
-            } else {
-                creep.moveTo(power[0]);
-            }
-            return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
-        }
-
-        if (!powerBank && powerRuin.length == 0 && power.length == 0) {
-            creep.room.find(FIND_MY_CREEPS, {filter: (c) => c.memory.role == 'power-carry' &&
-                c.memory.targetRoom == creep.room.name}).forEach((c) => {c.memory['suicide'] = true});;
+        // 如果都没有, 那么做如下处理。
+        if (!powerBank && !powerDropped && !powerRuin) {
+            _.filter(Game.creeps, (c) => 
+                c.memory.role == 'power-carry' &&
+                c.memory.targetRoom == creep.room.name)
+                .forEach((c) => {c.memory['suicide'] = true});
             if (creep.store.getUsedCapacity(RESOURCE_POWER) === 0) {
                 creep.suicide();
                 return false;
@@ -46,7 +57,7 @@ const power_carry = {
                 return true;
             }
         }
-
+        
         return creep.store.getFreeCapacity(RESOURCE_POWER) === 0;
     },
     target: function(creep: Creep) {

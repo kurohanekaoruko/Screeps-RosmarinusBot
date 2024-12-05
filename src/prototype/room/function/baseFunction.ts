@@ -13,6 +13,16 @@ export default class BaseFunction extends Room {
         return Energy;
     }
 
+    // 获取房间指定资源储备
+    getResourceAmount(resource: ResourceConstant) {
+        let amount = 0;
+        for(const s of [this.storage, this.terminal]) {
+            if(!s) continue;
+            amount += s.store[resource];
+        }
+        return amount;
+    }
+
     // 获取属于该房间的creep数量
     getCreepNum() {
         if (!global.CreepNum) global.CreepNum = {};
@@ -52,35 +62,76 @@ export default class BaseFunction extends Room {
         }
         return true;
     }
-    
-    
+
     // 绑定最少且最近的能量源
     closestSource(creep: Creep) {
         // 初始化最少Creep绑定计数
         let minCreepCount = Infinity;
         let leastCrowdedSources = [];
-        
-        // 计算每个采集点的绑定Creep数量，并动态维护绑定最少的采集点列表
-        this.source.forEach((source: Source) => {
-            let creepCount = _.filter(Game.creeps, c => 
-                        c.memory.role === creep.memory.role &&
-                        c.memory.targetSourceId === source.id &&
-                        c.ticksToLive > 100
-                    ).length;
 
+        if(!this.memory.sourcePosCount) this.memory.sourcePosCount = {}
+        let terrain = null;
+        // 找到绑定最少的，有位置的采集点
+        this.source.forEach((source: Source) => {
+            let creepCount = this.find(FIND_MY_CREEPS, {
+                filter: c => 
+                    c.memory.role === creep.memory.role &&
+                    c.memory.targetSourceId === source.id &&
+                    c.ticksToLive > 100
+            }).length;
+            // 该采集点的最大位置
+            let maxPosCount: number;
+            if (this.memory.sourcePosCount[source.id]) {
+                maxPosCount = this.memory.sourcePosCount[source.id];
+            } else {
+                if (!terrain) terrain = this.getTerrain();
+                let pos = source.pos;
+                maxPosCount = 
+                [[pos.x - 1, pos.y], [pos.x + 1, pos.y], [pos.x, pos.y - 1], [pos.x, pos.y + 1],
+                [pos.x - 1, pos.y - 1], [pos.x + 1, pos.y + 1], [pos.x - 1, pos.y + 1], [pos.x + 1, pos.y - 1]]
+                .filter((p) => p[0] > 0 && p[0] < 49 && p[1] > 0 && p[1] < 49 &&
+                    terrain.get(p[0], p[1]) !== TERRAIN_MASK_WALL
+                ).length
+                this.memory.sourcePosCount[source.id] = maxPosCount;
+            }
+            // 绑定满的忽略
+            if (creepCount >= maxPosCount) return;
             // 记录绑定数最小的采集点
             if (creepCount < minCreepCount) {
                 minCreepCount = creepCount;
-                leastCrowdedSources = [Game.getObjectById(source.id)];
+                leastCrowdedSources = [source];
             } else if (creepCount === minCreepCount) {
-                leastCrowdedSources.push(Game.getObjectById(source.id));
+                leastCrowdedSources.push(source);
             }
         });
     
-        // 从绑定数量最少的采集点中寻找离Creep最近的
-        let closestSource = creep.pos.findClosestByRange(leastCrowdedSources);
+        // 若有多个结果, 则选取最近的
+        let closestSource = null;
+        if (leastCrowdedSources.length == 1) {
+            closestSource = leastCrowdedSources[0];
+        } else if (leastCrowdedSources.length > 1) {
+            closestSource = creep.pos.findClosestByRange(leastCrowdedSources);
+        }
     
         return closestSource;
+    }
+
+    /* 动态生成体型 */
+    DynamicBodys(role: string) {
+        const lv = this.getEffectiveRoomLevel();
+        let body: number[];
+        if (RoleData[role]['adaption']) {
+            body = RoleLevelData[role][lv].bodypart
+        } else {
+            body = RoleData[role].ability;
+        }
+
+        if (lv == 8) {
+            if (role == 'harvester' && this.source.some(s => (s.effects||[]).some(e => e.effect == PWR_REGEN_SOURCE))) {
+                body = RoleLevelData[role][lv].upbodypart;
+            }
+        }
+        return body;
     }
 
     /* 生成指定体型 */

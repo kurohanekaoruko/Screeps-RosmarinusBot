@@ -6,6 +6,7 @@ import { BaseConfig } from '@/constant/config.js'
  */
 export const createApp = () => {
     const name = BaseConfig.BOT_NAME;
+    const shards = BaseConfig.shards;
     const events = {init: [], tickStart: [], tick: [], tickEnd: []}
     
     let runRoom = () => {};
@@ -29,7 +30,7 @@ export const createApp = () => {
 
     const mount = (func: () => void) => {
         func();
-        if(!Game.rooms.sim) console.log(`原型拓展已挂载。`)
+        if (Game.shard.name != 'sim') console.log(`原型拓展已挂载。`)
     }
 
     const on = (callbacks: any) => {
@@ -39,6 +40,7 @@ export const createApp = () => {
     };
 
     const init = () => {
+        if (!shards.includes(Game.shard.name)) return;
         events.init.forEach(callback => errorMapper(callback))
         const initEntities = (entity: any) => {
             Object.values(entity).forEach((item: any) => item.init()); 
@@ -46,7 +48,7 @@ export const createApp = () => {
         if (Room.prototype.init) initEntities(Game.rooms);
         if (Creep.prototype.init) initEntities(Game.creeps);
         if (PowerCreep.prototype.init) initEntities(Game.powerCreeps);
-        if(!Game.rooms.sim) console.log(`全局初始化完成。`)
+        if (Game.shard.name != 'sim') console.log(`全局初始化完成。`)
     };
 
     const tickStart = () => events.tickStart.forEach(callback => errorMapper(callback));
@@ -61,7 +63,7 @@ export const createApp = () => {
     const tickEnd = () => events.tickEnd.forEach(callback => errorMapper(callback));
 
     const run = () => {
-        if(Game.cpu.bucket < 20) return;
+        if (!shards.includes(Game.shard.name)) return;
         tickStart();
         tick();
         tickEnd();

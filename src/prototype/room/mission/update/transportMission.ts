@@ -53,6 +53,9 @@ function UpdateEnergyMission(room: Room) {
         })
     }
 
+    // 能量缺少时不填充以下的
+    if(room.getResourceAmount(RESOURCE_ENERGY) < 10000) return;
+
     // 检查powerSpawn是否需要填充能量
     if(Game.time % 20 === 0 && room.level == 8 && room.powerSpawn) {
         const powerSpawn = room.powerSpawn;
@@ -117,7 +120,7 @@ function UpdatePowerMission(room: Room) {
     const storage = room.storage;
     const terminal = room.terminal;
     if(!storage && !terminal) return;
-    if(storage.store[RESOURCE_POWER] < 1000 && terminal.store[RESOURCE_POWER] < 1000) return;
+    if(room.getResourceAmount(RESOURCE_POWER) < 1000) return;
 
     const powerSpawn = room.powerSpawn;
     if(!powerSpawn) return;
@@ -141,6 +144,7 @@ function UpdatePowerMission(room: Room) {
 // 检查lab是否需要填充资源
 function UpdateLabMission(room: Room) {
     const storage = room.storage;
+    const terminal = room.terminal;
     if (!storage) return;
     const BotMemStructures =  global.BotMem('structures', room.name);
     if (!BotMemStructures.lab || room.memory.defend) return;    // lab关停时不进行操作
@@ -172,14 +176,18 @@ function UpdateLabMission(room: Room) {
         const type = index === 0 ? labAtype : labBtype;
         if(lab.mineralType && lab.mineralType !== type) return;    // 有其他资源时不填充
         if(lab.store.getFreeCapacity(type) < 1000) return;   // 需要填充的量太少时不添加任务
-        if(storage.store[type] < 1000) return; // storage中资源不足时不添加任务
+        if(room.getResourceAmount(type) < 1000) return; // 资源不足时不添加任务
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
+        const target = [storage, terminal].reduce((prev, cur) => {
+            if(prev.store[type] >= cur.store[type]) return prev;
+            return cur;
+        })
         const taskdata = {
             pos: posInfo,
-            source: storage.id,
+            source: target.id,
             target: lab.id,
             resourceType: type,
-            amount: Math.min(lab.store.getFreeCapacity(type), storage.store[type]),
+            amount: Math.min(lab.store.getFreeCapacity(type), target.store[type]),
         }
         room.TransportMissionAdd(2, taskdata)
     });
@@ -259,21 +267,18 @@ function UpdateLabBoostMission(room: Room) {
         // 如果设定的资源不足，则补充
         if(lab.store.getUsedCapacity(boostType) < 2500) {
             const amount = 3000 - lab.store[boostType];
-            let source: Id<Structure>;
-            if(storage && storage.store[boostType] >= amount) {
-                source = storage.id;
-            } else if(terminal && terminal.store[boostType] >= amount) {
-                source = terminal.id;
-            } else {
-                return; // 如果storage和terminal都不足，则不补充
-            }
+            if (room.getResourceAmount(boostType) < 1000) return;
+            const target = [storage, terminal].reduce((prev, cur) => {
+                if(prev.store[boostType] >= cur.store[boostType]) return prev;
+                return cur;
+            })
             const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
             const taskdata = {
                 pos: posInfo,
-                source: source,
+                source: target.id,
                 target: lab.id,
                 resourceType: boostType,
-                amount: amount,
+                amount: Math.min(amount, target.store[boostType])
             }
             room.TransportMissionAdd(2, taskdata)
         }

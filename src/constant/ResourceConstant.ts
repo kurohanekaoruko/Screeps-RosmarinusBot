@@ -85,6 +85,48 @@ export const LabMap = {
     'XUHO2': { raw1: 'UHO2', raw2: 'X' },
 }
 
+// lab合成自动优先级
+export const LabLevel = {
+    'ZK': 1,
+    'UL': 1,
+
+    'G': 2,
+
+    'UH': 3,
+    'UO': 3,
+    'KH': 3,
+    'KO': 3,
+    'LH': 3,
+    'LO': 3,
+    'OH': 3,
+    'ZO': 3,
+    'ZH': 3,
+    'GH': 3,
+    'GO': 3,
+
+    'LHO2': 4,
+    'LH2O': 4,
+    'GH2O': 4,
+    'GHO2': 4,
+    'KH2O': 4,
+    'KHO2': 4,
+    'ZH2O': 4,
+    'ZHO2': 4,
+    'UH2O': 4,
+    'UHO2': 4,
+
+    'XLHO2': 5,
+    'XLH2O': 5,
+    'XUH2O': 5,
+    'XUHO2': 5,
+    'XZH2O': 5,
+    'XZHO2': 5,
+    'XKH2O': 5,
+    'XKHO2': 5,
+    'XGH2O': 5,
+    'XGHO2': 5,
+}
+
 export const CompoundColor = {
     'L': '#6cf0a9',
     'LH': '#6cf0a9',

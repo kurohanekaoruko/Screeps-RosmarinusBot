@@ -1,7 +1,26 @@
 const power_attack = {
     source: function(creep: Creep) {
+        if (!creep.memory.notified) {
+            creep.notifyWhenAttacked(false);
+            creep.memory.notified = true;
+        }
         if (creep.room.name != creep.memory.targetRoom || creep.pos.isRoomEdge()) {
             creep.moveToRoom(creep.memory.targetRoom);
+            return;
+        }
+
+        if(!creep.memory.boosted) {
+            const boostLevel = creep.memory['boostLevel'];
+            let boostRes = null;
+            if (boostLevel == 'T1') {
+                boostRes = ['UH', 'GO'];
+            }
+            if (boostRes) {
+                const result = creep.goBoost(boostRes);
+                if (result == 0) creep.memory.boosted = true;
+            } else {
+                creep.memory.boosted = true;
+            }
             return;
         }
 
@@ -29,8 +48,10 @@ const power_attack = {
                 creep.suicide();
                 const bindCreep = Game.getObjectById(creep.memory.bind) as Creep;
                 bindCreep?.suicide();
-                if (Memory.rooms[creep.memory.homeRoom]?.['powerMine']?.[creep.memory.targetRoom])
+                if (Memory.rooms[creep.memory.homeRoom]?.['powerMine']?.[creep.memory.targetRoom]) {
                     delete Memory.rooms[creep.memory.homeRoom]['powerMine'][creep.memory.targetRoom];
+                    console.log(`${creep.memory.targetRoom} 的 PowerBank 已耗尽, 已移出开采队列。`);
+                }
             } 
         }
 

@@ -1,7 +1,7 @@
 {
   "name": "rosmarinus",
-  "version": "2.10.0",
-  "description": "一个用于screeps的半自动bot ",
+  "version": "2.12.0",
+  "description": "",
   "type": "module",
   "scripts": {
     "build": "rollup -cw",
@@ -29,7 +29,6 @@
     "rollup": "^2.79.2",
     "rollup-plugin-clear": "^2.0.7",
     "rollup-plugin-copy": "^3.5.0",
-    "rollup-plugin-screeps": "^1.0.1",
     "rollup-plugin-typescript2": "^0.36.0",
     "terser": "^5.36.0",
     "tslib": "^2.7.0",
@@ -37,6 +36,8 @@
   },
   "dependencies": {
     "@rollup/plugin-alias": "^5.1.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-screeps": "^1.0.1",
     "shelljs": "^0.8.5",
     "source-map": "^0.6.1",
     "source-map-js": "^1.0.2"

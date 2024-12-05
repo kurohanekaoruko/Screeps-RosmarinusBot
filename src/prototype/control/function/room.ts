@@ -4,14 +4,19 @@ import { signConstant } from "@/constant/signConstant";
 export default {
     room: {
         // 添加房间
-        add(roomName: string, mode: string, layout?: string, x?: number, y?: number) {
+        add(roomName: string, mode?: string, layout?: string, x?: number, y?: number) {
             const BotMemRooms =  global.BotMem('rooms');
-            if(!BotMemRooms[roomName]) 
-                BotMemRooms[roomName] = {};
+            if(!BotMemRooms[roomName]) BotMemRooms[roomName] = {};
             BotMemRooms[roomName]['mode'] = mode ?? 'main';
-            if(layout) BotMemRooms[roomName]['layout'] = layout;
-            if(x && y) BotMemRooms[roomName]['center'] = {x, y};
             global.log(`已添加房间${roomName}。`);
+            if(layout) {
+                BotMemRooms[roomName]['layout'] = layout;
+                global.log(`已设置 ${roomName} 的布局为 ${layout}。`);
+            }
+            if(x && y) {
+                BotMemRooms[roomName]['center'] = {x, y};
+                global.log(`已设置 ${roomName} 的布局中心为 (${x},${y})。`);
+            }
             Game.rooms[roomName].init();
             return OK;
         },
@@ -57,6 +62,22 @@ export default {
             const botMem = global.BotMem('rooms', roomName);
             botMem['sign'] = text ?? signConstant[Math.floor(Math.random() * signConstant.length)];
             global.log(`已设置 ${roomName} 的房间签名为:\n ${text}。`);
+            return OK;
+        },
+        // 设置刷墙上限
+        setram(roomName: string, hits: number) {
+            const botMem = global.BotMem('structures', roomName);
+            if (hits <= 0) {
+                console.log(`输入的数值必须大于0.`);
+                return -1;
+            }
+            if (hits <= 1) {
+                botMem['ram_threshold'] = hits;
+                console.log(`已设置 ${roomName} 的刷墙上限比例为 ${hits}。`);
+            } else {
+                botMem['ram_threshold'] = hits / 3e8;
+                console.log(`已设置 ${roomName} 的刷墙上限比例为 ${hits / 3e8}。`);
+            }
             return OK;
         },
         // 开启冲级

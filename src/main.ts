@@ -10,8 +10,7 @@ import { MemoryInit } from '@/modules/MemoryInit';
 import { ClearModule, GeneratePixel, Statistics } from '@/function';
 
 import { DoubleSquad } from '@/modules/actions/DoubleSquad';
-import { Claim } from '@/modules/actions/Claim';
-import { CollectClusters } from '@/modules/actions/CollectClusters';
+import { ClaimModule } from '@/modules/actions/ClaimModule';
 import { PowerCollect } from './modules/actions/PowerCollect';
 
 
@@ -29,9 +28,7 @@ app.on(GlobalInit);    // 全局变量模块
 
 app.on(MemoryInit);    // 初始化内存
 
-app.on(Claim);       // 占领房间,使用flag触发
-
-app.on(CollectClusters);    // 挖外矿,使用flag触发
+app.on(ClaimModule);    // 占领模块
 
 app.on(PowerCollect);   // 采集Power,使用flag触发
 

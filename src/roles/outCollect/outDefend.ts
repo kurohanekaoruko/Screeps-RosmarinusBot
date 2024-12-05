@@ -12,7 +12,7 @@ const outDefend = {
         }
               
         if (targets.length > 0) {
-            let target = targets.find(c => c.getActiveBodyparts(HEAL) > 0);
+            let target = targets.find(c => c.getActiveBodyparts?.(HEAL) > 0);
             if(!target) {
                 target = creep.pos.findClosestByRange(targets);
             }

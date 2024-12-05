@@ -1,7 +1,7 @@
 const getheal = function (creep: Creep) {
     if(Game.time % 10 !== 0) return;
     const healCreeps = creep.room.find(FIND_MY_CREEPS, {
-        filter: (c) => c.memory.role === 'double-heal' &&
+        filter: (c) => c.memory.role === 'defend-2Heal' &&
                     c.memory.squad == 'defender' && !c.memory.bind
     });
     if(healCreeps.length < 1) return;

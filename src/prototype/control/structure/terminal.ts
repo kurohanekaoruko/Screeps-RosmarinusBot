@@ -7,7 +7,7 @@ export default {
             if(room && target && type && amount) {
                 const terminal = Game.rooms[room].terminal;
                 if (!terminal || terminal.cooldown !== 0) {
-                    console.log(`${room} 的终端不存在或处于冷却。`); return;
+                    return Error(`${room} 的终端不存在或处于冷却。`);
                 };
                 const RESOURCE_ABBREVIATIONS = global.BaseConfig.RESOURCE_ABBREVIATIONS;
                 type = RESOURCE_ABBREVIATIONS[type] || type;

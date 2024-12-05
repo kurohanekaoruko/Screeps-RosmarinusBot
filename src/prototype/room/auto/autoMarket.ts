@@ -47,7 +47,7 @@ function AutoBuy(roomName: string, item: any) {
     const orderAmount = (() => {
         if (resourceType !== RESOURCE_ENERGY) return 3000;
         if (global.BotMem('rooms', roomName, 'spup')) return 30000;
-        return 10000;
+        return 20000;
     })()    // 单次订单量   
 
     // 检查是否已有同类型订单未完成
@@ -67,7 +67,7 @@ function AutoBuy(roomName: string, item: any) {
     // 如果已有同类型订单未完成，则更新价格
     if (existingOrder) {
         const price = global.order.getPrice(existingOrder.resourceType, ORDER_BUY);
-        if(price > existingOrder.price || price < existingOrder.price * 0.8) {
+        if(price > existingOrder.price + 1 || price < existingOrder.price * 0.9) {
             Game.market.changeOrderPrice(existingOrder.id, price);
             return OK;
         }
@@ -126,7 +126,7 @@ function AutoSell(roomName: string, item: any) {
 
     if (existingOrder) {
         const price = global.order.getPrice(existingOrder.resourceType, ORDER_SELL);
-        if(price > existingOrder.price || price < existingOrder.price * 0.8) {
+        if(price > existingOrder.price + 1 || price < existingOrder.price * 0.9) {
             Game.market.changeOrderPrice(existingOrder.id, price);
         }
         return OK;

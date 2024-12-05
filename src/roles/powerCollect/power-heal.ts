@@ -1,8 +1,27 @@
 const power_heal = {
     source: function(creep: Creep) {
+        if (!creep.memory.notified) {
+            creep.notifyWhenAttacked(false);
+            creep.memory.notified = true;
+        }
         if (creep.room.name != creep.memory.targetRoom || creep.pos.isRoomEdge()) {
             creep.moveToRoom(creep.memory.targetRoom);
             if(creep.hits < creep.hitsMax) creep.heal(creep);
+            return;
+        }
+
+        if(!creep.memory.boosted) {
+            const boostLevel = creep.memory['boostLevel'];
+            let boostRes = null;
+            if (boostLevel == 'T1') {
+                boostRes = ['LO', 'GO'];
+            }
+            if (boostRes) {
+                const result = creep.goBoost(boostRes);
+                if (result == 0) creep.memory.boosted = true;
+            } else {
+                creep.memory.boosted = true;
+            }
             return;
         }
         
@@ -12,7 +31,7 @@ const power_heal = {
                 filter: (c) => c.getActiveBodyparts(ATTACK) > 0 || c.getActiveBodyparts(RANGED_ATTACK) > 0})) {
                 if (Memory.rooms[creep.memory.homeRoom]?.['powerMine']?.[creep.memory.targetRoom]) {
                     delete Memory.rooms[creep.memory.homeRoom]['powerMine'][creep.memory.targetRoom];
-                    console.log(`房间 ${creep.memory.homeRoom} 的 ${creep.memory.targetRoom} 开采已取消。`);
+                    console.log(`受到攻击，对 ${creep.memory.targetRoom} 的 PowerBank 开采已取消。`);
                 }
             }
             return false;
@@ -22,9 +41,10 @@ const power_heal = {
             const attackCreep = creep.room.find(FIND_MY_CREEPS,
                 {filter: (c) => c.memory.role == 'power-attack' && !c.memory.bind &&
                                 c.memory.targetRoom == creep.memory.targetRoom});
-            if (attackCreep.length === 0) return;
-            creep.memory.bind = attackCreep[0].id;
-            attackCreep[0].memory.bind = creep.id;
+            if (attackCreep.length > 0) {
+                creep.memory.bind = attackCreep[0].id;
+                attackCreep[0].memory.bind = creep.id;
+            }
         }
 
         if(!creep.memory.bind) {

@@ -22,19 +22,23 @@ export default {
         return OK;
     },
     log(text: string, ...args: any[]): OK | Error {
-        console.log(`[${global.BOT_NAME}]${text}`, ...args);
+        if (text[0] == '[') {
+            console.log(`[${global.BOT_NAME}]${text}`, ...args);
+        } else {
+            console.log(`[${global.BOT_NAME}] ${text}`, ...args);
+        }
         return OK;
     },
     whitelist: {
         add(id: string): OK | Error {
             if(!Memory['whitelist']) Memory['whitelist'] = [];
-            if(Memory['whitelist'].includes(id)) return Error("白名单中已存在");
+            if(Memory['whitelist'].includes(id)) return Error("白名单中已存在, 无法添加");
             Memory['whitelist'].push(id);
             return OK;
         },
         remove(id: string): OK | Error {
             if(!Memory['whitelist']) return Error("白名单不存在");
-            if(!Memory['whitelist'].includes(id)) return Error("白名单中不存在");
+            if(!Memory['whitelist'].includes(id)) return Error("白名单中不存在, 无法移除");
             Memory['whitelist'].splice(Memory['whitelist'].indexOf(id), 1);
             return OK;
         },
@@ -42,24 +46,9 @@ export default {
             return Memory['whitelist'] || [];
         }
     },
-    clearSite(roomName: string) {
-        const room = Game.rooms[roomName];
-        if(!room) {
-            return Error(`无房间视野`);
-        }
-        const site = room.find(FIND_MY_CONSTRUCTION_SITES);
-        if(site.length === 0) {
-            return Error(`无建筑工地`);
-        } else {
-            for(const s of site) {
-                s.remove();
-            }
-            return OK;
-        }
-    },
-    missionClear(roomName: string, type: string) {
-        Memory.MissionPools[roomName][type] = [];
-        console.log(`已清空房间 ${roomName} 的 ${type} 任务`);
+    GenPixel() {
+        Memory['GenPixel'] = !Memory['GenPixel'];
+        console.log(`搓Pixel功能已${Memory['GenPixel'] ? '开启' : '关闭'}`);
         return OK;
-    },
+    }
 }

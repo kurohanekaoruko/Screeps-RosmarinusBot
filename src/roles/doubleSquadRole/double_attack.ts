@@ -13,7 +13,7 @@ const getheal = function (creep: Creep) {
 
 const double_attack_action = {
     move: function (creep: Creep) {
-        const name = creep.name.match(/#(\w+)/)?.[0] ?? creep.name;
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
         const moveflag = Game.flags[name + '-move'];
         if(moveflag && !creep.pos.inRangeTo(moveflag.pos, 0)) {
             if(creep.room.name !== moveflag.pos.roomName) {
@@ -29,8 +29,19 @@ const double_attack_action = {
         if(creep.memory.targetRoom && creep.room.name !== creep.memory.targetRoom) {
             creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ff0000')
         }
-        else if(creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
-            creep.moveTo(new RoomPosition(25, 25, creep.room.name))
+        // 躲边界
+        else if(creep.pos.isRoomEdge()) {
+            creep.moveTo(new RoomPosition(25, 25, creep.room.name), {
+                maxRooms: 1,
+                ignoreCreeps: false
+            })
+        }
+        // 躲边界
+        else if(creep.room.name == bindcreep.room.name && bindcreep.pos.isRoomEdge()) {
+            creep.moveTo(new RoomPosition(25, 25, creep.room.name), {
+                maxRooms: 1,
+                ignoreCreeps: false
+            })
         }
 
         // 如果房间不同，让heal过来
@@ -53,8 +64,10 @@ const double_attack_action = {
         }
 
         const area: [number, number, number, number] = 
-                    aFlag ? [aFlag.pos.y - 3, aFlag.pos.x - 3, aFlag.pos.y + 3, aFlag.pos.x + 3] :
-                            [creep.pos.y - 5, creep.pos.x - 5, creep.pos.y + 5, creep.pos.x + 5];
+                    aFlag ? [Math.max(aFlag.pos.y - 3, 0), Math.max(aFlag.pos.x - 3, 0),
+                             Math.min(aFlag.pos.y + 3, 49), Math.min(aFlag.pos.x + 3, 49)] :
+                            [Math.max(creep.pos.y - 5, 0), Math.max(creep.pos.x - 5, 0),
+                             Math.min(creep.pos.y + 5, 49), Math.min(creep.pos.x + 5, 49)];
         const enemies = creep.room
                         .lookForAtArea(LOOK_CREEPS, ...area, true)
                         .map(obj => obj.creep)
@@ -65,26 +78,6 @@ const double_attack_action = {
                 creep.attack(targetEnemy); // 优先攻击敌人
             } else {
                 creep.double_move(targetEnemy, '#ff0000');
-            }
-            return true;
-        }
-
-        if(creep.room.controller?.my) return false;
-        const enemyStructures = creep.room
-                                .lookForAtArea(LOOK_STRUCTURES, ...area, true)
-                                .map(obj => obj.structure)
-                                .filter(structure => 
-                                    structure.structureType !== STRUCTURE_CONTAINER &&
-                                    structure.structureType !== STRUCTURE_ROAD &&
-                                    structure.structureType !== STRUCTURE_KEEPER_LAIR)
-        if (enemyStructures.length > 0) {
-            let targetStructure = creep.pos.findClosestByRange(enemyStructures);
-            const rampart = targetStructure.pos.lookFor(LOOK_STRUCTURES).find(structure => structure.structureType === STRUCTURE_RAMPART);
-            if(rampart) { targetStructure = rampart }
-            if(creep.pos.inRangeTo(targetStructure, 1)) {
-                creep.attack(targetStructure);
-            } else {
-                creep.double_move(targetStructure, '#ff0000');
             }
             return true;
         }

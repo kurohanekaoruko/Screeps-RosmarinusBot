@@ -50,28 +50,11 @@ const TransportFunction = function(creep: Creep) {
 
     // 如果creep没有足够的指定资源，从source获取
     if (creep.store.getFreeCapacity(resourceType) > 0 && creep.store[resourceType] < amount) {
-        // 检查source是否有足够的资源
         creep.withdrawOrMoveTo(sourceObj, resourceType);
     } 
     
     // 如果creep有足够的指定资源，将其转移到target
     else {
-        // 如果目标是extension，优先检查并补充周围未满的extension
-        if (targetObj.structureType === STRUCTURE_EXTENSION) {
-            const nearbyExtension = creep.room.lookForAtArea(
-                LOOK_STRUCTURES,
-                Math.max(0, creep.pos.y - 1), Math.max(0, creep.pos.x - 1),
-                Math.min(49, creep.pos.y + 1), Math.min(49, creep.pos.x + 1),
-                true
-            ).filter(item => 
-                item.structure.structureType === STRUCTURE_EXTENSION && 
-                (item.structure as StructureExtension).store.getFreeCapacity(RESOURCE_ENERGY) > 0
-            ).map(item => item.structure)[0];
-            if (nearbyExtension && creep.transfer(nearbyExtension, RESOURCE_ENERGY) === OK) {
-                return; // 补充成功，结束当前tick
-            }
-        }
-
         // 尝试向目标转移资源
         if(creep.pos.isNearTo(targetObj)) {
             const result = creep.transfer(targetObj, resourceType);

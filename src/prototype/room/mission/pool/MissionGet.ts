@@ -7,8 +7,8 @@ export default class MissionGet extends Room {
 
         const task = this.getMissionFromPool('transport', posInfo);
         if(!task) return null;
-        
-        task.lock = creep.id;
+
+        this.lockMissionInPool('transport',task.id, creep.id);
 
         return task;
     }

@@ -9,10 +9,12 @@ export default class BaseFunction extends PowerCreep {
         return false
     }
     transferOPS(): boolean {
-        if (this.store.getFreeCapacity(RESOURCE_OPS) === 0 && this.store[RESOURCE_OPS] > 0) {
+        if (this.store.getFreeCapacity() === 0 && this.store[RESOURCE_OPS] > 200) {
             const halfOps = Math.floor(this.store[RESOURCE_OPS] / 2);
+            const amount = Math.max(halfOps, this.store[RESOURCE_OPS] - 200);
+            if (amount <= 0) return false;
             if (this.pos.isNearTo(this.room.storage)) {
-                this.transfer(this.room.storage, RESOURCE_OPS, halfOps);
+                this.transfer(this.room.storage, RESOURCE_OPS, amount);
             } else {
                 this.moveTo(this.room.storage);
             }
@@ -27,12 +29,12 @@ export default class BaseFunction extends PowerCreep {
         }
         return false;
     }
-    withdrawOPS(): boolean {
-        if(this.store[RESOURCE_OPS] < 200 && 
-            (this.room.storage?.store[RESOURCE_OPS] > 200 || this.room.terminal?.store[RESOURCE_OPS] > 200)) {
-            const target = this.room.storage?.store[RESOURCE_OPS] > 200 ? this.room.storage : this.room.terminal;
+    withdrawOPS(amount: number = 200): boolean {
+        if(this.store[RESOURCE_OPS] < amount && 
+            (this.room.storage?.store[RESOURCE_OPS] > amount || this.room.terminal?.store[RESOURCE_OPS] > amount)) {
+            const target = this.room.storage?.store[RESOURCE_OPS] > amount ? this.room.storage : this.room.terminal;
             if(this.pos.isNearTo(target)) {
-                this.withdraw(target, RESOURCE_OPS, 200 - this.store[RESOURCE_OPS]);
+                this.withdraw(target, RESOURCE_OPS, amount - this.store[RESOURCE_OPS]);
             } else {
                 this.moveTo(target);
             }
@@ -61,5 +63,28 @@ export default class BaseFunction extends PowerCreep {
             return true;
         }
         return false;
+    }
+    transferPower() {
+        if (this.store[RESOURCE_POWER] >= 100) {
+            const powerSpawn = this.room.powerSpawn;
+            if (!powerSpawn) return;
+            if (powerSpawn.store[RESOURCE_POWER] > 60) return;
+            if (this.pos.isNearTo(powerSpawn)) {
+                this.transfer(powerSpawn, RESOURCE_POWER);
+            } else {
+                this.moveTo(powerSpawn);
+            }
+        } else {
+            const storage = this.room.storage;
+            if (!storage) return;
+            if (storage.store[RESOURCE_POWER] < 100) return;
+            if (this.pos.isNearTo(storage)) {
+                const amount = Math.min(100, this.store.getFreeCapacity());
+                this.withdraw(storage, RESOURCE_POWER, amount);
+            } else {
+                this.moveTo(storage);
+            }
+        }
+        return true;
     }
 }

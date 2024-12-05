@@ -61,18 +61,24 @@ interface Room {
     CacheCenterPos(): void;
     // 计算房间内所有结构体能量
     AllEnergy(): number;
+    // 获取房间指定资源储备
+    getResourceAmount(type: ResourceConstant | string): number;
     // 获取属于该房间的creep数量
     getCreepNum(): { [role: string]: number };
     // 返回一个等级, 取决于spawn总容量
     getEffectiveRoomLevel(): number;
+    // 动态生成体型, 压缩形式
+    DynamicBodys(role): number[];
     // 生成creep body
-    GenerateBodys(abilityList: any[], role?: string): any[];
+    GenerateBodys(abilityList: any[], role?: string): BodyPartConstant[];
     // 获取房间内最近的source
     closestSource(creep: Creep): Source;
-    // 自动按照预设布局建造
-    autoLayout(): void;
-    /** 自动市场交易 */
+    // 自动按照预设布局建造建筑
+    autoBuild(): void;
+    // 自动市场交易
     autoMarket(): void;
+    // 自动lab合成
+    autoLab(): void;
     // 自动工厂生产
     autoFactory(): void;
     // 外矿采集模块
@@ -87,18 +93,8 @@ interface RoomMemory {
     /** 房间内所有spawn、extension的id */
     spawn_extensions: Array<Id<StructureExtension>|Id<StructureSpawn>>;
     
-    /** 房间内所有lab的id */
-    labs: Id<StructureLab>[];
-    /** 底物lab A */
-    labA: Id<StructureLab>;
-    /** 底物lab B */
-    labB: Id<StructureLab>;
-    /** labA 的资源类型 */
-    labAtype: ResourceConstant;
-    /** labB 的资源类型 */
-    labBtype: ResourceConstant;
-    /** lab进行boost的资源类型 */
-    labsBoostType: { [id: Id<StructureLab>]: ResourceConstant };
+    /** source周边的最大可用位置数 */
+    sourcePosCount: { [source_id: string]: number };
     
     /** 房间布局的中心点 */
     centralPos: {x: number, y: number};
@@ -113,8 +109,8 @@ interface RoomMemory {
     defend: boolean;
     /** factory等级 */
     factoryLevel: number;
-    /** 工厂生产类型 */
-    factoryTask: ResourceConstant;
+    /** 工厂生产产物 */
+    factoryProduct: ResourceConstant;
     /** 房间运行模式 */
     mode: string;
 

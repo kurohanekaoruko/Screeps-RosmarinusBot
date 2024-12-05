@@ -40,14 +40,16 @@ export default class MoveFunction extends Creep {
             if(this.fatigue + bindCreep.fatigue > 0) return;
             // 同时移动
             const result = this.moveTo(target, { visualizePathStyle: { stroke: color } });
-            if(result ===  OK) bindCreep.moveTo(this);
+            if(result === OK) {
+                this.pull(bindCreep);
+                bindCreep.move(this);
+            }
         }
-        // 如果距离拉远了，那么等待
+        // 如果距离拉远了，那么等他过来
         else {
             if(this.pos.x === 0 || this.pos.x === 49 || this.pos.y === 0 || this.pos.y === 49) {
                 this.moveTo(target, { visualizePathStyle: { stroke: color } });    // 位于房间边缘时不等
             }
-            this.pull(bindCreep);
             bindCreep.moveTo(this);
         }
     }

@@ -27,7 +27,16 @@ export default {
         // 孵化powerCreep
         pc(roomName: string, pcname: string) {
             const room = Game.rooms[roomName];
-            const result = Game.powerCreeps[pcname].spawn(room.powerSpawn);
+            if (!room || !room.my) {
+                console.log(`房间 ${roomName} 不存在、未拥有或未添加。`);
+                return -1;
+            }
+            const pc = Game.powerCreeps[pcname]
+            if (!pc) {
+                console.log(`PowerCreep 【${pcname}】 不存在。`);
+                return -1;
+            }
+            const result = pc.spawn(room.powerSpawn);
             if(result === OK) {
                 console.log(`${roomName} 的 PowerSpawn 孵化了 PowerCreep 【${pcname}】 `);
             }

@@ -16,7 +16,9 @@ export default class RoomRun extends Room {
         this.StructureWork();    // 处理建筑行为
         this.activeDefend();     // 主动防御处理
         this.autoMarket();       // 自动市场交易
-        this.autoLayout();       // 自动布局
+        this.autoBuild();        // 自动建筑
+        this.autoLab();          // 自动Lab合成
+        this.autoFactory();      // 自动Factory生产
         this.outMine();          // 外矿采集
     }
 }

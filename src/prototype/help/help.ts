@@ -16,7 +16,8 @@ export default [
             return head +
                 '###  指令列表  ###\n' +
                 'help: 查看帮助\n' +
-                'helpRoom: 查看房间相关指令\n'
+                'helpRoom: 查看房间相关指令\n' +
+                'helpLayout: 查看布局相关指令\n'
         }
     },
     {
@@ -25,10 +26,34 @@ export default [
             return '###  房间指令列表  ###\n' +
                 'room.add(roomName, mode, layout, x, y): 添加房间到控制列表，列表中的房间才会自动运行。\n' +
                 ' - roomName: 房间名 mode: 运行模式 layout: 布局 x,y: 布局中心\n' +
-                ' - 后面的参数可以为空，空则使用默认值。\n' +
-                ' - helpLayout: 查看布局帮助\n' +
+                ' - 后面的参数可以为空。\n' +
+                ' - mode: 决定房间以哪种模式运行, 留空默认为main, 可选项包括 main  (目前只有main)\n' +
+                ' - layout: 使用的布局, 留空则不使用\n' +
+                ' - x,y: 布局中心坐标, 留空则不使用\n' +
+                'helpLayout: 查看布局帮助\n' +
                 'room.remove(roomName): 从控制列表删除房间\n' +
                 'room.list(): 查看控制列表\n'
+        }
+    },
+    {
+        alias: 'helpLayout',
+        exec: function () {
+            return '###  布局指令列表  ###\n' +
+                    'layout.set(roomName, layout, x, y): 设置房间布局\n' +
+                    ' - roomName: 房间名 layout: 静态布局名称 x,y: 布局中心\n' +
+                    ' - 可用的布局有: dev、hoho、tea、ros\n' +
+                    'layout.auto(roomName): 开关房间自动建筑, 需要设置布局\n' +
+                    'layout.remove(roomName): 删除指定房间布局Memory\n' +
+                    ' - 如果重新设置布局, 就需要用这个手动删除\n' +
+                    'layout.build(roomName): 使用63自动布局生成各个建筑的位置, 并保存在Memory中。无需设置布局。\n' +
+                    ' - 如果有对应房间视野，那么会自动获取 能量源、控制器、元素矿 的位置。\n' +
+                    ' - 如果没有对应房间视野, 那么需要设置4个flag, 分别为对应房间的\n' +
+                    '       pc 控制器, pm 矿, pa pb 能量源。\n' +
+                    ' - 运行后会自动设置房间布局名称为 "63", 并且会自动保存布局Memory\n' +
+                    'layout.visual(rooName): 在地图上显示布局可视化\n' +
+                    ' - 能将布局Memory中的建筑位置可视化, 方便查看布局是否正确。\n' +
+                    ' - layout.build运行成功后就会有布局Memory,。\n' +
+                    ' - 如果是使用静态布局则需要等待最多100tick才有布局Memory。\n'
         }
     }
 ]

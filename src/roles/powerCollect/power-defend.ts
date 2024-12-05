@@ -22,7 +22,7 @@ const power_defend = {
 
         const hostileCreeps = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 5, {
             filter: (c) => !Memory['whitelist'].includes(c.owner.username) &&
-                (c.getActiveBodyparts(ATTACK) > 0 || c.getActiveBodyparts(RANGED_ATTACK) > 0)
+                c.body.some(p => p.type == HEAL || p.type == ATTACK || p.type == RANGED_ATTACK || p.type == WORK)
         });
         if (hostileCreeps.length > 0) {
             if(!creep.pos.inRangeTo(hostileCreeps[0], 2)) {
@@ -43,7 +43,7 @@ const power_defend = {
             if (creep.pos.inRangeTo(powerBank, 3)) {
                 creep.rangedAttack(powerBank);
             } else {
-                creep.moveTo(powerBank);
+                creep.moveTo(powerBank, {range: 3, ignoreCreeps: false});
             }
             return false;
         }

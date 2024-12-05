@@ -20,19 +20,31 @@ const double_dismantle_action = {
                 creep.memory.targetRoom = moveflag.pos.roomName;
             }
             creep.double_move(moveflag.pos, '#ffff00')
-            return true;
         }
+        if (moveflag) return true;
         return false
     },
     moveToRoom: function (creep: Creep, bindcreep: Creep) {
+        let moveOK = false;
         // 移动到目标房间
         if(creep.memory.targetRoom && creep.room.name !== creep.memory.targetRoom) {
-            creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ffff00')
+            creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ffff00');
+            moveOK = true;
         }
-        else if(creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
-            creep.moveTo(new RoomPosition(25, 25, creep.room.name))
+        // 躲边界
+        else if(creep.pos.isRoomEdge()) {
+            creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ffff00');
+            moveOK = true;
         }
-
+        // 躲边界
+        else if(creep.room.name == bindcreep.room.name && bindcreep.pos.isRoomEdge()) {
+            bindcreep.moveTo(new RoomPosition(25, 25, creep.room.name), {
+                maxRooms: 1,
+                ignoreCreeps: false,
+            })
+            moveOK = true;
+        }
+        
         // 如果房间不同，让heal过来
         if(creep.room.name != bindcreep.room.name) {
             bindcreep.moveTo(creep.pos)
@@ -41,12 +53,12 @@ const double_dismantle_action = {
         // 未到达房间不继续行动
         if(creep.memory.targetRoom && creep.room.name !== creep.memory.targetRoom) return true;
 
-        return false
+        return moveOK
     },
     dismantle: function (creep: Creep) {
         if(creep.room.controller?.my) return false;
-
-        const disflag = Game.flags[creep.name + '-dis'] || Game.flags['dis-' + creep.room.name];
+        const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
+        const disflag = Game.flags[name + '-dis'] || Game.flags['dis-' + creep.room.name];
         if(disflag) {
             const enemiesStructures = disflag.pos.lookFor(LOOK_STRUCTURES);
             if(enemiesStructures.length > 0) {

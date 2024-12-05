@@ -32,17 +32,19 @@ const one_tough = function (creep: Creep) {
         creep.notifyWhenAttacked(false);
         creep.memory.notified = true;
     }
-    if(!creep.memory.boosted) {
+
+    creep.heal(creep);
+
+    if (!creep.memory.boosted) {
         const boost = ['XGHO2', 'GHO2', 'GO', 'XLHO2', 'LHO2', 'LO'];
         creep.memory.boosted = creep.boost(boost);
         return
     }
+
     if(creep.ticksToLive < 100 && creep.room.my) {
         creep.unboost();
         return;
     }
-
-    creep.heal(creep);
 
     if(one_tough_action.move(creep)) return;
 

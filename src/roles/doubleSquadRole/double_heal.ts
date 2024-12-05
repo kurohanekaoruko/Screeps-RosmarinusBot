@@ -37,48 +37,46 @@ const double_heal = function (creep: Creep) {
         return;
     }
 
-    if(bindcreep.hits < bindcreep.hitsMax && !healed) {
+    if(bindcreep && !healed) {
         if (creep.pos.isNearTo(bindcreep)) {
             creep.heal(bindcreep);
             healed = true;
-            return;
         } else if (creep.pos.inRangeTo(bindcreep, 3)) {
             creep.rangedHeal(bindcreep);
             healed = true;
-            return;
         }
     }
 
-    if (creep.pos.roomName === bindcreep.pos.roomName){
-        let poss = [];
-        if(creep.pos.x === 0 || creep.pos.x === 49) {
-            if(bindcreep.pos.y - 1 > 0) poss.push(new RoomPosition(bindcreep.pos.x, creep.pos.y - 1, bindcreep.pos.roomName));
-            if(bindcreep.pos.y + 1 < 49) poss.push(new RoomPosition(bindcreep.pos.x, creep.pos.y + 1, bindcreep.pos.roomName));
-        }
-        if(creep.pos.y === 0 || creep.pos.y === 49) {
-            if(bindcreep.pos.x - 1 > 0) poss.push(new RoomPosition(bindcreep.pos.x - 1, bindcreep.pos.y, bindcreep.pos.roomName));
-            if(bindcreep.pos.x + 1 < 49) poss.push(new RoomPosition(bindcreep.pos.x + 1, bindcreep.pos.y, bindcreep.pos.roomName));
-        }
-        if(poss.length > 0) {
-            const terrain = new Room.Terrain(creep.room.name);
-            const pos = poss.find(pos => pos.lookFor(LOOK_CREEPS).length === 0 &&
-                pos.lookFor(LOOK_STRUCTURES).length === 0 && terrain.get(pos.x, pos.y) !== TERRAIN_MASK_WALL);
-            if(pos) {
-                creep.moveTo(pos, { visualizePathStyle: { stroke: '#00ff00' } });
-            }
-        }
-    }
+    // if (creep.pos.roomName === bindcreep.pos.roomName && 
+    //     (creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49)
+    // ){
+    //     const terrain = new Room.Terrain(creep.room.name);
+    //     const targets =
+    //     [[creep.pos.x - 1, creep.pos.y - 1], [creep.pos.x, creep.pos.y-1],
+    //      [creep.pos.x + 1, creep.pos.y - 1], [creep.pos.x-1, creep.pos.y],
+    //      [creep.pos.x+1, creep.pos.y], [creep.pos.x - 1, creep.pos.y + 1],
+    //      [creep.pos.x, creep.pos.y + 1], [creep.pos.x + 1, creep.pos.y + 1]
+    //     ].filter(pos => {
+    //         if (pos[0] <= 0 || pos[0] >= 49 || pos[1] <= 0 || pos[1] >= 49) return false;
+    //         if (terrain.get(pos[1], pos[0]) === TERRAIN_MASK_WALL) return false;
+    //         if (creep.room.lookForAt(LOOK_CREEPS, pos[0], pos[1]).length > 0) return false;
+    //         return true;
+    //     })
+    //     if (targets.length > 0) {
+    //         creep.moveTo(targets[0][0], targets[0][1]);
+    //     }
+    // }
 
-    const area = [creep.pos.y - 4, creep.pos.x - 4, creep.pos.y + 4, creep.pos.x + 4] as [number, number, number, number];
+    const area = [Math.max(creep.pos.y - 4, 0), Math.max(creep.pos.x - 4, 0),
+                  Math.min(creep.pos.y + 4, 49), Math.min(creep.pos.x + 4, 49)] as [number, number, number, number];
     const enemies = creep.room
                     .lookForAtArea(LOOK_CREEPS, ...area, true)
                     .map(obj => obj.creep)
                     .filter((creep) => !creep.my);
-    if (enemies.length > 0 && !healed) {
-        if (creep.pos.isNearTo(bindcreep)) {
-            creep.heal(bindcreep);
-        } else if (creep.pos.inRangeTo(bindcreep, 3)) {
-            creep.rangedHeal(bindcreep);
+    if (enemies.length > 0) {
+        const target = enemies[0];
+        if (creep.pos.inRangeTo(target, 3)) {
+            creep.rangedAttack(target);
         }
     }
     return;

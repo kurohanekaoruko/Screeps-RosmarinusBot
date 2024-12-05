@@ -1,10 +1,10 @@
-import { harvester, carrier, transport, manage, upgrader, builder, repair, miner, 
-         harvest_carry, SpeedUpgrader, logistics, claimer, lclaimer } from '@/roles'
-import { outScout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack } from '@/roles';
+import { harvester, carrier, transport, manage, upgrader, builder, repair, miner} from '@/roles'
+import { harvest_carry, SpeedUpgrader, SpeedRepair, logistics, claimer, lclaimer, dismantle, aclaimer } from '@/roles'
+import { scout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack } from '@/roles';
 import { power_attack, power_heal, power_carry, power_defend } from '@/roles';
-import { deposit_harvest, deposit_transport } from '@/roles';
-import { one_tough } from '@/roles';
-import { double_attack, double_dismantle, double_carry, double_heal, double_tough, double_defender } from '@/roles'
+import { deposit_harvest, deposit_transfer } from '@/roles';
+import { one_tough, one_ranged } from '@/roles';
+import { double_attack, double_dismantle, double_heal, double_defender } from '@/roles'
 
 
 interface RoleConfig {
@@ -40,55 +40,58 @@ export const RoleData: RoleConfig = {
     /* 特殊用途 */
     'har-car': { num: 0, ability: [1, 1, 2, 0, 0, 0, 0, 0], level: 0, code: 'HC', work: harvest_carry }, // 采集搬运一体机，处理停摆状况，以及房间早期没有container时孵化
     'speedup-upgrad': { num: 0, ability: [2, 1, 1, 0, 0, 0, 0, 0], adaption: true, level: 11, code: 'SU', work: SpeedUpgrader }, // 加速升级
-    'speedup-repair': { num: 0, ability: [25, 5, 15, 0, 0, 0, 0, 0], level: 11, code: 'SR', work: repair }, // 加速刷墙
-    'logistics': { num: 0, ability: [0, 2, 2, 0, 0, 0, 0, 0], adaption: true, level: 1, code: 'L', work: logistics }, // 长途运输
-    
+    'speedup-repair': { num: 0, ability: [25, 5, 15, 0, 0, 0, 0, 0], level: 11, code: 'SR', work: SpeedRepair }, // 加速刷墙
+    'logistics': { num: 0, ability: [0, 2, 2, 0, 0, 0, 0, 0], adaption: true, level: 10, code: 'L', work: logistics }, // 长途运输
+    'dismantle': { num: 0, ability: [40, 0, 10, 0, 0, 0, 0, 0], level: 10, code: 'D', action: dismantle},  // 拆墙
+
     /* 占领房间 */
-    'claimer': { num: 0, ability: [0, 0, 4, 0, 0, 0, 4, 0], level: 11, adaption: true, work: claimer },
-    'lclaimer': { num: 0, ability: [0, 0, 10, 0, 0, 9, 1, 0], level: 11, code: 'LC', action: lclaimer },
+    'claimer': { num: 0, ability: [0, 0, 4, 0, 0, 0, 4, 0], level: 11, code: 'CL', adaption: true, work: claimer },
+    'lclaimer': { num: 0, ability: [0, 0, 10, 0, 0, 9, 1, 0], level: 11, code: 'LCL', action: lclaimer },
+    'aclaimer': { num: 0, ability: [0, 0, 19, 0, 0, 0, 19, 0], level: 11, code: 'ACL', action: aclaimer },
 
     /* 战斗相关 */
     /* 二人队 */
     'double-attack': { num: 0, ability: [0, 0, 10, 28, 0, 0, 0, 12], level: 10, code: '2A', action: double_attack},
     'double-dismantle': { num: 0, ability: [28, 0, 10, 0, 0, 0, 0, 12], level: 10, code: '2D', action: double_dismantle},
-    'double-carry': { num: 0, ability: [0, 28, 10, 0, 0, 0, 0, 12], level: 10, code: '2C', action: double_carry},
-    'double-heal': { num: 0, ability: [0, 0, 10, 0, 0, 28, 0, 12], level: 10, code: '2H', action: double_heal},
-    'double-tough': { num: 0, ability: [0, 0, 10, 0, 0, 0, 0, 20], level: 10, code: '2T', action: double_tough},
+    'double-heal': { num: 0, ability: [0, 0, 10, 0, 2, 28, 0, 10], level: 10, code: '2H', action: double_heal},
 
     /* 一体机 */
     'one-tough': { num: 0, ability: [0, 0, 20, 0, 0, 14, 0, 6], level: 10, code: '1T', action: one_tough},
-    'one-ranged': { num: 0, ability: [0, 0, 10, 0, 5, 23, 0, 12], level: 10, code: '1R', action: null},
+    'one-ranged': { num: 0, ability: [0, 0, 10, 0, 5, 23, 0, 12], level: 10, code: '1R', action: one_ranged},
     
     /* 主动防御 */
     'defend-attack': { num: 0, ability: [0, 0, 10, 40, 0, 0, 0, 0], level: 8, code: "DA", must: true },
     'defend-range': { num: 0, ability: [0, 0, 10, 0, 40, 0, 0, 0], level: 8, code: "DR", must: true },
-    'defend-2Attack': { num: 0, ability: [0, 0, 10, 25, 0, 0, 0, 15], level: 7, code: "D2A", action: double_defender },
-    'defend-2Heal': { num: 0, ability: [0, 0, 10, 0, 0, 30, 0, 10], level: 7, code: "D2H", action: double_heal },
+    'defend-2Attack': { num: 0, ability: [0, 0, 10, 25, 0, 0, 0, 15], level: 7, code: "D2A", must: true, action: double_defender },
+    'defend-2Heal': { num: 0, ability: [0, 0, 10, 0, 0, 30, 0, 10], level: 7, code: "D2H", must: true, action: double_heal },
 
     /* 外矿 */
-    'out-scout': { num: 0, ability: [0, 0, 1, 0, 0, 0, 0, 0], level: 11, work: outScout },
-    'out-claim': { num: 0, ability: [0, 0, 5, 0, 0, 0, 5, 0], level: 11, adaption: true, work: outClaim },
-    'out-harvest': { num: 0, ability: [4, 2, 4, 0, 0, 0, 0, 0], level: 12, adaption: true, work: outHarvest },
-    'out-miner': { num: 0, ability: [4, 2, 4, 0, 0, 0, 0, 0], level: 12, adaption: true, work: outHarvest },
-    'out-car': { num: 0, ability: [1, 5, 6, 0, 0, 0, 0, 0], level: 13, adaption: true, work: outCarry},
-    'out-carry': { num: 0, ability: [0, 5, 5, 0, 0, 0, 0, 0], level: 13, adaption: true, work: outCarry},
-    'out-build': { num: 0, ability: [1, 5, 6, 0, 0, 0, 0, 0], level: 13, adaption: true, work: outBuild },
-    'out-defend': { num: 0, ability: [0, 0, 5, 5, 0, 5, 0, 0], level: 8, adaption: true, work: outDefend},
-    'out-invader': { num: 0, ability: [0, 0, 5, 5, 0, 6, 0, 0], level: 10, adaption: true, work: outInvader},
-    'out-attack': { num: 0, ability: [0, 0, 25, 19, 0, 6, 0, 0], level: 9, work: outAttack},
+    'out-scout': { num: 0, ability: [0, 0, 1, 0, 0, 0, 0, 0], level: 11, code: 'OS', work: scout },
+    'out-claim': { num: 0, ability: [0, 0, 5, 0, 0, 0, 5, 0], level: 11, code: 'OCL', adaption: true, work: outClaim },
+    'out-harvest': { num: 0, ability: [4, 2, 4, 0, 0, 0, 0, 0], level: 12, code: 'OH', adaption: true, work: outHarvest },
+    'out-miner': { num: 0, ability: [4, 2, 4, 0, 0, 0, 0, 0], level: 12, code: 'OM', adaption: true, work: outHarvest },
+    'out-car': { num: 0, ability: [1, 5, 6, 0, 0, 0, 0, 0], level: 13, code: 'OC', adaption: true, work: outCarry},
+    'out-carry': { num: 0, ability: [0, 5, 5, 0, 0, 0, 0, 0], level: 13, code: 'OC', adaption: true, work: outCarry},
+    'out-build': { num: 0, ability: [1, 5, 6, 0, 0, 0, 0, 0], level: 13, code: 'OB', adaption: true, work: outBuild },
+    'out-defend': { num: 0, ability: [0, 0, 5, 5, 0, 5, 0, 0], level: 8,code: 'OD', adaption: true, work: outDefend},
+    'out-invader': { num: 0, ability: [0, 0, 5, 5, 0, 6, 0, 0], level: 10, code: 'OI', adaption: true, work: outInvader},
+    'out-attack': { num: 0, ability: [0, 0, 25, 19, 0, 6, 0, 0], level: 9, code: 'OA', work: outAttack},
 
     /* 沉积物 */
-    'deposit-harvest': { num: 0, ability: [20, 10, 20, 0, 0, 0, 0, 0], level: 11, adaption: true, work: deposit_harvest },
-    'deposit-transport': { num: 0, ability: [0, 25, 25, 0, 0, 0, 0, 0], level: 11, adaption: true, work: deposit_transport },
+    'deposit-harvest': { num: 0, ability: [20, 6, 22, 2, 0, 0, 0, 0], level: 11, code: 'DH', work: deposit_harvest },
+    'deposit-transfer': { num: 0, ability: [0, 25, 25, 0, 0, 0, 0, 0], level: 11, code: 'DT', work: deposit_transfer },
+    'deposit-attack': { num: 0, ability: [0, 0, 25, 15, 0, 10, 0, 0], level: 8, code: "DDA", must: true },
+    'deposit-range': { num: 0, ability: [0, 0, 25, 0, 15, 10, 0, 0], level: 8, code: "DDR", must: true },
 
-    /* power */
+    /* Power */
     'power-attack': { num: 0, ability: [0, 0, 25, 20, 0, 0, 0, 5], level: 10, code: 'PA', work: power_attack },
     'power-heal': { num: 0, ability: [0, 0, 25, 0, 0, 25, 0, 0], level: 10, code: 'PH', work: power_heal },
     'power-carry': { num: 0, ability: [0, 25, 25, 0, 0, 0, 0, 0], level: 10, code: 'PC', work: power_carry },
-    'power-defend': { num: 0, ability: [0, 0, 25, 0, 10, 10, 0, 5], level: 10, code: 'PD', work: power_defend },
+    'power-defend': { num: 0, ability: [0, 0, 25, 0, 15, 10, 0, 0], level: 10, code: 'PD', work: power_defend },
 
 }
 
+// 根据等级的动态部件
 export const RoleLevelData = {
     'harvester': {
         1: { bodypart: [2, 1, 1, 0, 0, 0, 0, 0], num: 2 },
@@ -118,7 +121,7 @@ export const RoleLevelData = {
         5: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 1 },
         6: { bodypart: [0, 15, 15, 0, 0, 0, 0, 0], num: 1 },
         7: { bodypart: [0, 24, 12, 0, 0, 0, 0, 0], num: 2 },
-        8: { bodypart: [0, 30, 15, 0, 0, 0, 0, 0], num: 1 },
+        8: { bodypart: [0, 30, 15, 0, 0, 0, 0, 0], num: 2 },
     },
     'manage': {
         1: { bodypart: [0, 1, 1, 0, 0, 0, 0, 0], num: 0 },
@@ -281,24 +284,17 @@ export const RoleLevelData = {
         7: { bodypart: [35, 5, 10, 0, 0, 0, 0, 0], num: 0 },
         8: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 }
     },
-    'deposit-harvest': {
-        1: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        2: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        3: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        4: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        5: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        6: { bodypart: [10, 10, 10, 0, 0, 0, 0, 0], num: 0 },
-        7: { bodypart: [20, 10, 20, 0, 0, 0, 0, 0], num: 0 },
-        8: { bodypart: [20, 10, 20, 0, 0, 0, 0, 0], num: 0 },
+}
+
+// 配置选项
+export const RoleBodys = {
+    'one-ranged':{
+        T0: [0, 0, 10, 0, 12, 23, 0, 5],
     },
-    'deposit-transport': {
-        1: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        2: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        3: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        4: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        5: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 },
-        6: { bodypart: [0, 20, 20, 0, 0, 0, 0, 0], num: 0 },
-        7: { bodypart: [0, 25, 25, 0, 0, 0, 0, 0], num: 0 },
-        8: { bodypart: [0, 25, 25, 0, 0, 0, 0, 0], num: 0 },
+    'double-dismantle':{
+        T0: [35, 0, 10, 0, 0, 0, 0, 5],
+    },
+    'double-heal':{
+        T0: [0, 0, 5, 0, 0, 15, 0, 5],
     }
 }

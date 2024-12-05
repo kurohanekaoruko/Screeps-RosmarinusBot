@@ -69,11 +69,14 @@ const UnitRepair = {
     target: function (creep: Creep) {   // 维修
         if(!creep.memory.ready) return false;
         if(!creep.moveHomeRoom()) return;
-        RepairWork(creep);
         if(creep.store.getUsedCapacity() === 0) {
             creep.say('🔄');
+            creep.withdrawEnergy();
             return true;
-        } else { return false; }
+        } else {
+            RepairWork(creep);
+            return false;
+        }
     },
     source: function (creep: Creep) {   // 获取能量
         if(!creep.memory.ready) return false;
@@ -82,11 +85,14 @@ const UnitRepair = {
             if(creep.unboost()) creep.suicide();
             return false;
         }
-        creep.takeEnergy();
         if(creep.store.getFreeCapacity() === 0) {
             creep.say('🚧');
+            RepairWork(creep);
             return true;
-        } else { return false; }
+        } else {
+            creep.withdrawEnergy();
+            return false;
+        }
     }
 }
 

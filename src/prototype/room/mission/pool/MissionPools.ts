@@ -1,3 +1,25 @@
+/**
+ * 任务池被存储在Memory的MissionPools中, 每个room独立存储
+ * 
+ * 任务池的格式:
+ * [ roomName: string ]: {
+ *      "任务类型": [任务数组],
+ *      ...
+ * }
+ * 
+ * 
+ * 任务的格式:
+ * {
+ *      id: string,     // 任务id
+ *      type: string,   // 任务类型
+ *      level: number,  // 优先级, 越小越优先
+ *      data: any,      // 任务数据, 该模块并不关心任务数据的具体内容, 在执行任务时处理即可
+ *      lock?: Id,      // 可选, 绑定该任务的creep Id, 如果任务被锁定, 则其他creep无法获取该任务。
+ * }
+ */
+
+
+/** 通用的任务池模块 */
 export default class MissionPools extends Room {
     // 任务池初始化
     public initMissionPool() {
@@ -18,7 +40,7 @@ export default class MissionPools extends Room {
         return OK;
     }
 
-    // 获取任务池
+    // (私有方法) 获取任务池
     private getPool(type: Task["type"]) {
         const memory = Memory.MissionPools[this.name];
         if(!memory) return null;
@@ -27,7 +49,7 @@ export default class MissionPools extends Room {
         return null;
     }
     
-    // 添加任务到任务池
+    // (私有方法) 添加任务到任务池
     private pushTaskToPool(type: Task["type"], task: Task) {
         if(!Memory.MissionPools[this.name][type]) {
             console.log(`任务池 ${type} 不存在`);
@@ -38,7 +60,7 @@ export default class MissionPools extends Room {
         return OK;
     }
 
-    // 删除任务池中的任务
+    // (私有方法) 删除任务池中的任务
     private removeTaskFromPool(type: Task["type"], index: number) {
         if(!Memory.MissionPools[this.name][type]) {
             console.log(`任务池 ${type} 不存在`);
@@ -48,7 +70,7 @@ export default class MissionPools extends Room {
         return OK;
     }
 
-    // 修改任务池中的任务
+    // (私有方法) 修改任务池中的任务
     private modifyTaskInPool(type: Task["type"], index: number, task: Task) {
         if(!Memory.MissionPools[this.name][type]) {
             console.log(`任务池 ${type} 不存在`);
@@ -58,7 +80,7 @@ export default class MissionPools extends Room {
         return OK;
     }
 
-    // 生成一个16进制id
+    // (私有方法) 生成一个16进制id
     private generateId() {
         const Gametime = Game.time.toString(16);
         const Random = Math.random().toString(16).slice(2,11);
@@ -83,7 +105,7 @@ export default class MissionPools extends Room {
     // 获取任务池中的任务
     public getMissionFromPool(type: Task["type"], pos?: string, checkFunc?: (task: Task) => boolean) {
         const tasks = this.getPool(type);
-        if (!tasks) { return; }
+        if (!tasks) { return null; }
         if (tasks.length === 0) return null; // 如果没有任务，返回null
 
         // 筛选未锁且有效的任务
@@ -202,7 +224,7 @@ export default class MissionPools extends Room {
         return OK;
 }
 
-    // 删除任务池中的任务
+    // 用id删除任务池中的任务
     public deleteMissionFromPool(type: Task["type"], id: Task["id"]) {
         const tasks = this.getPool(type);
         if (!tasks) { return; }

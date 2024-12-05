@@ -2,6 +2,7 @@ export default class ActiveDefend extends Room {
     activeDefend() {
         // 关于主动防御的检查
         if (Game.time % 20) return;
+        if (!Memory['whitelist']) Memory['whitelist'] = [];
         let hostiles = this.find(FIND_HOSTILE_CREEPS, {
             filter: hostile => 
                 !Memory['whitelist'].includes(hostile.owner.username) &&

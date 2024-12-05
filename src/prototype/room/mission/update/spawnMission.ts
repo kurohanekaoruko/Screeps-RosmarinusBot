@@ -60,10 +60,10 @@ function UpdateSpawnMission(room: Room) {
     global.CreepNum[room.name] = room.getCreepNum() || {};
     const lv = room.level;
     const roomName = room.name;
-    for(const role in RoleData) {
+    for (const role in RoleData) {
         const currentNum =  (global.SpawnMissionNum[roomName][role] || 0) + (global.CreepNum[roomName][role] || 0);
         const num = RoleData[role]['adaption'] ? RoleLevelData[role][lv]['num'] : RoleData[role]['num'];
-        if(RoleSpawnCheck(room, role, currentNum, num)) {
+        if (RoleSpawnCheck(room, role, currentNum, num)) {
             room.SpawnMissionAdd(
                 RoleData[role].code,
                 [],

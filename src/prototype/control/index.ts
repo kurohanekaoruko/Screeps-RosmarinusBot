@@ -1,5 +1,6 @@
 import base from './base';
-import room from './room';
+import room from './function/room';
+import clear from './function/clear';
 import outmine from './function/outmine';
 import layout from './function/layout';
 import market from './function/market';
@@ -11,11 +12,10 @@ import powerspawn from './structure/powerspawn';
 import nuker from './structure/nuker';
 
 
-
-
 const plugins = [
     base,
     room,
+    clear,
     layout,
     market,
     outmine,

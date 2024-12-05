@@ -5,7 +5,7 @@ export default class BaseFunction extends Creep {
     /**
      * 获取能量
      */
-    takeEnergy() {   // builder、upgrader、repairer 的能量获取
+    withdrawEnergy() {   // builder、upgrader、repairer 的能量获取
         const updateTakeTarget = () => {
             if (this.memory.cache.takeTarget) return false;
 
@@ -126,8 +126,69 @@ export default class BaseFunction extends Creep {
     /**
      * 强化 creep
      * @param {Array<string>} boostTypes - 强化的资源类型数组
-     * @returns {boolean} - 是否成功强化
+     * @returns {number} - -1 无法强化, 0 结束强化, 1 强化或移动中
      */
+    goBoost(boostTypes: Array<string>) {
+        // 查找有足够指定资源的lab
+        const labs = this.room.lab.filter((lab) => 
+            lab.mineralType &&
+            boostTypes.includes(lab.mineralType) &&
+            lab.store[lab.mineralType] >= 100
+        );
+        if(labs.length == 0) return -1; // 无法强化
+
+        // 找到装有与未强化部件匹配的资源的lab
+        const availableLabs = labs.filter(lab => {
+            return this.body.some(part => BOOSTS[part.type] && lab.mineralType in BOOSTS[part.type] && !part.boost);
+        });
+        if (availableLabs.length == 0) return -1;   // 无法强化
+
+        // 按照输入的优先级顺序选择lab
+        const prioritizedLabs = availableLabs.sort((a, b) => {
+            for (let type of boostTypes) {
+                if (a.mineralType === type && b.mineralType !== type) return -1;
+                if (b.mineralType === type && a.mineralType !== type) return 1;
+            }
+            return 0;
+        });
+        const closestLab = this.pos.findClosestByRange(prioritizedLabs);
+        if(!closestLab) return -1;  // 无法强化
+
+        // 如果creep不在lab旁边，移动到lab
+        if (!this.pos.isNearTo(closestLab)) {
+            this.moveTo(closestLab, { visualizePathStyle: { stroke: '#ffffff' } });
+            return 1;   // 移动中
+        }
+
+        // 尝试强化
+        let result = closestLab.boostCreep(this);
+        // 如果强化成功，检查是否已经完全强化
+        if (result == OK) {
+            // 检查需要强化的部件是否都已经被强化
+            const allRequiredPartsAreBoosted = this.body.every(part => 
+                !boostTypes.some(boostType => BOOSTS[part.type] && boostType in BOOSTS[part.type]) || part.boost
+            );
+            if (allRequiredPartsAreBoosted) {
+                return 0;  // 所有需要强化的部件都已强化
+            }
+            // 如果还有未强化的部件，继续尝试强化
+            return 1;
+        }
+
+        // 如果强化失败，重试多次后放弃
+        if (!this.memory.boostAttempts) {
+            this.memory.boostAttempts = 1;
+        } else {
+            this.memory.boostAttempts++;
+        }
+        if (this.memory.boostAttempts >= 5) {
+            // 重试5次后放弃强化
+            delete this.memory.boostAttempts;
+            return 0;
+        }
+
+        return 1;
+    }
     boost(boostTypes: Array<string>) {
         // 查找有足够指定资源的lab
         const labs = this.room.lab.filter((lab) => 
@@ -230,11 +291,11 @@ export default class BaseFunction extends Creep {
     /**
      * 从指定结构中提取资源
      */
-    withdrawOrMoveTo(target: any | Tombstone | Ruin, resoureType?: ResourceConstant, amount?: number): boolean {
+    withdrawOrMoveTo(target: any | Tombstone | Ruin, resoureType?: ResourceConstant, ...args: any[]): boolean {
         if (!target) return false; // 如果没有目标，返回 false
         if (this.pos.isNearTo(target)) {
             if (!resoureType) resoureType = Object.keys(target.store)[0] as ResourceConstant;
-            this.withdraw(target, resoureType, amount);
+            this.withdraw(target, resoureType, ...args);
         } else {
             this.moveTo(target, {
                 visualizePathStyle: { stroke: '#ffaa00' },

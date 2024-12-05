@@ -1,5 +1,12 @@
 import { RoleLevelData, RoleData } from '@/constant/CreepConstant';
 
+// 过道观察间隔
+const LookInterval = 10;
+// 沉积物最大冷却
+const DepositMaxCooldown = 120;
+// 最小power数量限制
+const PowerMinAmount = 2000;
+
 
 /** 外矿采集模块 */
 export default class OutMine extends Room {
@@ -21,7 +28,7 @@ export default class OutMine extends Room {
             const lv = this.getEffectiveRoomLevel();
 
             if (!targetRoom) {
-                outScoutSpawn(this, roomName);    // 侦查
+                scoutSpawn(this, roomName);    // 侦查
                 continue;    // 没有房间视野不生成
             }
 
@@ -41,10 +48,11 @@ export default class OutMine extends Room {
 
             const hostiles = targetRoom.find(FIND_HOSTILE_CREEPS, {
                 filter: (creep) => (
-                    creep.owner.username === 'Invader' ||
+                    (creep.owner.username === 'Invader' ||
                     creep.owner.username === 'Source Keeper' ||
                     creep.getActiveBodyparts(ATTACK) > 0 ||
-                    creep.getActiveBodyparts(RANGED_ATTACK) > 0
+                    creep.getActiveBodyparts(RANGED_ATTACK) > 0) &&
+                    !Memory['whitelist']?.includes(creep.owner.username)
                 )
             });
 
@@ -71,23 +79,24 @@ export default class OutMine extends Room {
         const outminePower = global.BotMem('rooms', this.name, 'outminePower');
         const outmineDeposit = global.BotMem('rooms', this.name, 'outmineDeposit');
         if (!outminePower && !outmineDeposit) return;
-        // 间隔
-        const lookInterval = 10;
-        if (Game.time % lookInterval > 1) return;
+        if (Game.time % LookInterval > 1) return;
         // 监控列表
-        const lookList = global.BotMem('outmine', this.name, 'highway');
+        let lookList = global.BotMem('outmine', this.name, 'highway');
         if (lookList.length == 0) return;
         // 观察
-        if (Game.time % lookInterval == 0) {
+        if (Game.time % LookInterval == 0) {
             if (!this.observer) return;
             // 观察编号
-            const lookIndex = Math.floor(Game.time / lookInterval) % lookList.length;
+            let lookIndex = Math.floor(Game.time / LookInterval) % lookList.length;
             const roomName = lookList[lookIndex];
-            if (!Game.rooms[roomName]) this.observer.observeRoom(roomName);
+            if (!Game.rooms[roomName])
+                this.observer.observeRoom(roomName);
             return;
         }
         // 处理
         for(const roomName of lookList) {
+            if (/^[EW]\d*[1-9][NS]\d*[1-9]$/.test(roomName)) continue;
+
             const room = Game.rooms[roomName];
             if (!room) continue;
             if (!this.memory['powerMine']) this.memory['powerMine'] = {};
@@ -99,77 +108,101 @@ export default class OutMine extends Room {
                 if (P_num) {
                     this.memory['powerMine'][roomName] = P_num;
                     console.log(`在 ${roomName} 发现 PowerBank, 已加入开采队列。`);
+                    console.log(`将从 ${this.name} 派出总共 ${P_num} 数量的采集队。`);
                 }
             } else if (outminePower && this.memory['powerMine'][roomName]) {
                 const powerBank = room.powerBank?.[0] ?? room.find(FIND_STRUCTURES, {
                     filter: (structure) => structure.structureType === STRUCTURE_POWER_BANK
                 })[0];
-                if (!powerBank) delete this.memory['powerMine'][roomName];
+                if (!powerBank) {
+                    delete this.memory['powerMine'][roomName];
+                    console.log(`${roomName} 的 PowerBank 已耗尽, 已移出开采队列。`);
+                }
+            } else if (!outminePower) {
+                // 如果没开启 power 自动开采，那么发邮件通知powerBank情况
+                if(!global.PowerBankNotify) global.PowerBankNotify = {};
+                const powerBank = room.powerBank?.[0] ?? room.find(FIND_STRUCTURES, {
+                    filter: (structure) => structure.structureType === STRUCTURE_POWER_BANK
+                })[0];
+                if (powerBank && powerBank.power >= PowerMinAmount &&
+                    !global.PowerBankNotify[powerBank.id]) {
+                    Game.notify(`发现 PowerBank, 房间: ${roomName}, power量: ${powerBank.power}。`);
+                    global.PowerBankNotify[powerBank.id] = true;
+                }
             }
 
             // deposit
             if (outmineDeposit && !this.memory['depositMine'][roomName]) {
                 let D_num = DepositCheck(room);
-                if (D_num && D_num.length > 0) {
+                if (D_num > 0) {
                     this.memory['depositMine'][roomName] = D_num;
                     console.log(`在 ${roomName} 发现 Deposit, 已加入开采队列。`);
+                    console.log(`将从 ${this.name} 派出总共 ${D_num} 数量的采集队。`);
                 }
             } else if (outmineDeposit && this.memory['depositMine'][roomName]) {
                 let D_num = DepositCheck(room);
-                if (D_num && D_num.length > 0 && D_num.some((num) => num > 0)) {
+                if (D_num > 0) {
                     this.memory['depositMine'][roomName] = D_num;
                 } else {
                     delete this.memory['depositMine'][roomName];
+                    console.log(`${roomName} 的 Deposit 已耗尽, 已移出开采队列。`);
                 }
             }
         }
     }
 
     PowerMine() {
-        if (Game.time % 10 != 1) return;
+        if (Game.time % LookInterval != 1) return;
         const roomList = this.memory['powerMine'];
         if (!roomList || Object.keys(roomList).length == 0) return;
 
         // 孵化任务数统计
         global.SpawnMissionNum[this.name] = this.getSpawnMissionAmount() || {};
         
-        for (const roomName in roomList) {
-            const room = Game.rooms[roomName];
-
+        for (const targetRoom in roomList) {
+            const room = Game.rooms[targetRoom];
             const powerBank = room?.powerBank?.[0] ?? room?.find(FIND_STRUCTURES, {
                 filter: (structure) => structure.structureType === STRUCTURE_POWER_BANK
             })[0];
-
-            let pa: Creep[], ph: Creep[];
-            let P_num = roomList[roomName];
+            let pa = 0, ph = 0;
+            let P_num = roomList[targetRoom];
+            // 统计以targetRoom为工作目标的所有role情况
+            const CreepByTargetRoom = getCreepByTargetRoom(targetRoom);
             if (!powerBank || powerBank.hits > 300000) {
-                pa = _.filter(Game.creeps, (creep) => creep.memory.role == 'power-attack' &&
-                            creep.memory.targetRoom == roomName && (creep.spawning || creep.ticksToLive > 150));
-                ph = _.filter(Game.creeps, (creep) => creep.memory.role == 'power-heal' &&
-                                creep.memory.targetRoom == roomName && (creep.spawning || creep.ticksToLive > 150));
+                pa = (CreepByTargetRoom['power-attack'] || [])
+                    .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
+                ph = (CreepByTargetRoom['power-heal'] || [])
+                    .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
             } else {
-                pa = _.filter(Game.creeps, (c) => c.memory.role == 'power-attack' && c.memory.targetRoom == roomName);
-                ph = _.filter(Game.creeps, (c) => c.memory.role == 'power-heal' && c.memory.targetRoom == roomName);
+                pa = (CreepByTargetRoom['power-attack'] || []).length;
+                ph = (CreepByTargetRoom['power-heal'] || []).length;
                 P_num = 1;
             }
-            if (pa.length + (global.SpawnMissionNum[this.name]['power-attack']||0) < P_num) {
-                const memory = { homeRoom: this.name, targetRoom: roomName } as CreepMemory;
-                this.SpawnMissionAdd('PA', [], -1, 'power-attack', memory);
+            let panum = pa + (global.SpawnMissionNum[this.name]['power-attack']||0);
+            let phnum = ph + (global.SpawnMissionNum[this.name]['power-heal']||0);
+            for (let i = Math.min(panum, phnum); i < P_num; i++) {
+                if (panum < P_num) { 
+                    const memory = { homeRoom: this.name, targetRoom: targetRoom } as CreepMemory;
+                    this.SpawnMissionAdd('PA', [], -1, 'power-attack', memory);
+                    panum++;
+                }
+                if (phnum < P_num) { 
+                    const memory = { homeRoom: this.name, targetRoom: targetRoom } as CreepMemory;
+                    this.SpawnMissionAdd('PH', [], -1, 'power-heal', memory);
+                    phnum++;
+                }
             }
-            if (ph.length + (global.SpawnMissionNum[this.name]['power-heal']||0) < P_num) {
-                const memory = { homeRoom: this.name, targetRoom: roomName } as CreepMemory;
-                this.SpawnMissionAdd('PH', [], -1, 'power-heal', memory);
-            }
-            
+
             if (!room) continue;
 
             if (powerBank && powerBank.hits < powerBank.hitsMax / (P_num==1?4:2)) {
-                const pc = _.filter(Game.creeps, (creep) => creep.memory.role == 'power-carry' &&
-                                creep.memory.targetRoom == roomName && (creep.spawning || creep.ticksToLive > 150));
-                if (pa.length < 1 && ph.length < 1) continue;
-                const memory = { homeRoom: this.name, targetRoom: roomName };
-                for (let i = pc.length + (global.SpawnMissionNum[this.name]['power-carry']||0);
-                         i < (powerBank.power / 1250); i++) {
+                const pc = (CreepByTargetRoom['power-carry'] || [])
+                            .filter((c: any) => c.spawning || c.ticksToLive > 150).length;
+                if (pa < 1 && ph < 1) continue;
+                const memory = { homeRoom: this.name, targetRoom: targetRoom };
+                const pcnum = pc + (global.SpawnMissionNum[this.name]['power-carry']||0);
+                const maxPc = powerBank.power / 1250;
+                for (let i = pcnum; i < maxPc; i++) {
                     this.SpawnMissionAdd('PC', [], -1, 'power-carry', memory as any)
                 }
             }
@@ -177,56 +210,41 @@ export default class OutMine extends Room {
     }
 
     DepositMine(){
-        if (Game.time % 10 != 1) return;
+        if (Game.time % LookInterval != 1) return;
         const roomList = this.memory['depositMine'];
         if (!roomList || Object.keys(roomList).length == 0) return;
 
-        
-
         // 孵化任务数统计
         global.SpawnMissionNum[this.name] = this.getSpawnMissionAmount() || {};
-
-        for (const roomName in roomList) {
-            const room = Game.rooms[roomName];
-            if (room) {
-                const deposits = room.deposit ?? room.find(FIND_DEPOSITS);
-                if (!deposits || deposits.length == 0 || !deposits.some((d) => d.lastCooldown < 120)) {
-                    delete this.memory['depositMine'][roomName];
-                    break;
-                }
-                for (let i = 0; i < deposits.length; i++) {
-                    if (deposits[i].lastCooldown < 120) continue;
-                    this.memory['depositMine'][roomName][i] = 0;
-                    continue;
-                }
+        for (const targetRoom in roomList) {
+            const D_num = roomList[targetRoom];
+            if (!D_num || D_num <= 0) continue;
+            // 统计以targetRoom为工作目标的所有role情况
+            const CreepByTargetRoom = getCreepByTargetRoom(targetRoom);
+            const dh = (CreepByTargetRoom['deposit-harvest'] || [])
+                        .filter((c: any) => c.spawning || c.ticksToLive > 200).length;
+            const dhnum = dh + (global.SpawnMissionNum[this.name]['deposit-harvest']||0)
+            if(dhnum < D_num) {
+                const memory = { homeRoom: this.name, targetRoom: targetRoom } as any;
+                this.SpawnMissionAdd('DH', [], -1, 'deposit-harvest', memory);
             }
-            const D_num = roomList[roomName];
-            for (let i = 0; i < D_num.length; i++) {
-                if (D_num[i] <= 0) continue;
-                const dh = _.filter(Game.creeps, (c: any) => c.memory.role == 'deposit-harvest' &&
-                            c.memory.depositIndex == i && c.memory.targetRoom == roomName &&
-                            (c.spawning || c.ticksToLive > 200));
-                if(dh.length + (global.SpawnMissionNum[this.name]['deposit-harvest']||0) < D_num[i]) {
-                    const memory = { homeRoom: this.name, targetRoom: roomName, depositIndex: i} as any;
-                    this.SpawnMissionAdd('DH', [], -1, 'deposit-harvest', memory);
-                }
-                const dt = _.filter(Game.creeps, (c) => c.memory.role == 'deposit-transport' && 
-                            c.memory.targetRoom == roomName && (c.spawning || c.ticksToLive > 200));
-                if(dt.length + (global.SpawnMissionNum[this.name]['deposit-transport']||0) < 2) {
-                    const memory = { homeRoom: this.name, targetRoom: roomName } as any;
-                    this.SpawnMissionAdd('DT', [], -1, 'deposit-transport', memory);
-                }
+            const dt = (CreepByTargetRoom['deposit-transfer'] || [])
+                        .filter((c: any) => c.spawning || c.ticksToLive > 150).length;
+            const dtnum = dt + (global.SpawnMissionNum[this.name]['deposit-transfer']||0)
+            if(dtnum < 2) {
+                const memory = { homeRoom: this.name, targetRoom: targetRoom } as any;
+                this.SpawnMissionAdd('DT', [], -1, 'deposit-transfer', memory);
             }
         }
     }
 }
 
 // 侦查
-const outScoutSpawn = function (homeRoom: Room, targetRoomName: string) {
-    const scouts = _.filter(Game.creeps, (creep) => creep.memory.role == 'out-scout' &&
-                            creep.memory.targetRoom == targetRoomName);
+const scoutSpawn = function (homeRoom: Room, targetRoomName: string) {
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoomName);
+    const scouts = (CreepByTargetRoom['out-scout'] || []).length;
     const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-scout'] || 0;
-    if (scouts.length + spawnNum > 0) return false;
+    if (scouts + spawnNum > 0) return false;
 
     const memory = { homeRoom: homeRoom.name, targetRoom: targetRoomName } as CreepMemory;
     homeRoom.SpawnMissionAdd('OS', [0,0,1,0,0,0,0,0], RoleData['out-scout'].level, 'out-scout', memory);
@@ -241,12 +259,9 @@ const outDefendSpawn = function (homeRoom: Room, targetRoom: Room, lv: number, h
 
     if (invaderCore.length === 0 && hostiles.length === 0) return false;
 
-    const outerDefenders = _.filter(Game.creeps, (creep) =>
-                            creep.memory.role == 'out-defend' &&
-                            creep.memory.targetRoom == targetRoom.name);
-    const outerInvaders = _.filter(Game.creeps, (creep) => 
-                            creep.memory.role == 'out-invader' &&
-                            creep.memory.targetRoom == targetRoom.name);
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoom.name);
+    const outerDefenders = (CreepByTargetRoom['out-defend'] || []).length;
+    const outerInvaders = (CreepByTargetRoom['out-invader'] || []).length;
 
     let role: string;
     let bodys: number[];
@@ -256,34 +271,38 @@ const outDefendSpawn = function (homeRoom: Room, targetRoom: Room, lv: number, h
 
     if(hostiles.length > 0) {
         const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-defend'] || 0;
-        if (outerDefenders.length + spawnNum >= 1) return false;
+        if (outerDefenders + spawnNum >= 1) return false;
         role = 'out-defend';
         bodys = DynamicBodys(role, lv);
         memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name };
         name = 'OD';
         level = RoleData[role].level;
+        if(!bodys || !memory || !level) return false;
+        homeRoom.SpawnMissionAdd(name, bodys, level, role, memory);
+        return true;
     }
     if(invaderCore.length > 0) {
         const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-invader'] || 0;
-        if (outerInvaders.length + spawnNum >= 2) return false;
+        if (outerInvaders + spawnNum >= 2) return false;
         role = 'out-invader';
         bodys = DynamicBodys(role, lv);
         memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name };
         name = 'OI';
         level = RoleData[role].level;
+        if(!bodys || !memory || !level) return false;
+        homeRoom.SpawnMissionAdd(name, bodys, level, role, memory);
+        return true;
     }
-
-    if(!bodys || !memory || !name) return false;
-    homeRoom.SpawnMissionAdd(name, bodys, level, role, memory);
-    return true;
+    
+    return false;
 }
 
 // 采集
 const outHarvesterSpawn = function (homeRoom: Room, targetRoom: Room, sourceNum: number) {
-    const outerHarvesters = _.filter(Game.creeps, (creep) => 
-            creep.memory.role == 'out-harvest' && creep.memory.targetRoom == targetRoom.name);
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoom.name);
+    const outerHarvesters = (CreepByTargetRoom['out-harvest'] || []).length;
     const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-harvest'] || 0;
-    if (outerHarvesters.length + spawnNum >= sourceNum) return false; 
+    if (outerHarvesters + spawnNum >= sourceNum) return false; 
 
     const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
     homeRoom.SpawnMissionAdd('OH', [], -1, 'out-harvest', memory);
@@ -292,22 +311,23 @@ const outHarvesterSpawn = function (homeRoom: Room, targetRoom: Room, sourceNum:
 
 // 搬运
 const outCarrySpawn = function (homeRoom: Room, targetRoom: Room, num: number) {
-    const outerCarry = _.filter(Game.creeps, (creep) => (creep.memory.role == 'out-carry') &&
-        creep.memory.targetRoom == targetRoom.name && creep.memory.homeRoom == homeRoom.name);
-    const outerCar = _.filter(Game.creeps, (creep) => (creep.memory.role == 'out-car') &&
-        creep.memory.targetRoom == targetRoom.name && creep.memory.homeRoom == homeRoom.name);
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoom.name);
+    const outerCarry = (CreepByTargetRoom['out-carry'] || [])
+                        .filter((c: any) => c.homeRoom == homeRoom.name).length;
+    const outerCar = (CreepByTargetRoom['out-car'] || [])
+                        .filter((c: any) => c.homeRoom == homeRoom.name).length;
     
     const spawnCarryNum = global.SpawnMissionNum[homeRoom.name]['out-carry'] || 0;
     const spawnCarNum = global.SpawnMissionNum[homeRoom.name]['out-car'] || 0;
 
-    if (outerCar.length + spawnCarNum == 0) {
+    if (outerCar + spawnCarNum == 0) {
         const role = 'out-car';
         const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
         homeRoom.SpawnMissionAdd('OC', [], -1, role, memory);
         return true;
     }
 
-    if (outerCarry.length + spawnCarryNum < num) {
+    if (outerCarry + spawnCarryNum < 1) {
         const role = 'out-carry';
         const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
         homeRoom.SpawnMissionAdd('OC', [], -1, role, memory);
@@ -326,10 +346,11 @@ const outReserverSpawn = function (homeRoom: Room, targetRoom: Room) {
         targetRoom.controller.reservation.username == homeRoom.controller.owner.username &&
         targetRoom.controller.reservation.ticksToEnd > 1000) return false;
 
-    const outerReservers = _.filter(Game.creeps, (creep) => creep.memory.role == 'out-claim' &&
-                                    creep.memory.targetRoom == targetRoom.name);
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoom.name);
+    const outerReservers = (CreepByTargetRoom['out-claim'] || []).length;
+
     const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-claim'] || 0;
-    if (outerReservers.length + spawnNum >= 1) return false;
+    if (outerReservers + spawnNum >= 1) return false;
 
     const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
     homeRoom.SpawnMissionAdd('OCL', [], -1, 'out-claim', memory);
@@ -343,10 +364,11 @@ const outBuilderSpawn = function (homeRoom: Room, targetRoom: Room) {
     });
     if (constructionSite.length === 0) return false;
 
-    const outerBuilder = _.filter(Game.creeps, (creep) => creep.memory.role == 'out-build' &&
-                                    creep.memory.targetRoom == targetRoom.name);
+    const CreepByTargetRoom = getCreepByTargetRoom(targetRoom.name);
+    const outerBuilder = (CreepByTargetRoom['out-build'] || []).length;
+
     const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-build'] || 0;
-    if (outerBuilder.length + spawnNum >= 1) return false;
+    if (outerBuilder + spawnNum >= 1) return false;
     
     const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
     homeRoom.SpawnMissionAdd('OB', [], -1, 'out-build', memory);
@@ -361,11 +383,11 @@ const DynamicBodys = function (role: string, lv: number): number[] {
 }
 
 const PowerBankCheck = function (room: Room) {
-    const powerBank = room.powerBank?.[0] ?? room.find(FIND_STRUCTURES, {
+    const powerBank = room.find(FIND_STRUCTURES, {
         filter: (s) => (s.hits >= s.hitsMax && s.structureType === STRUCTURE_POWER_BANK)
     })[0] as StructurePowerBank;
 
-    if (!powerBank || powerBank.power < 1000) return 0;
+    if (!powerBank || powerBank.power < PowerMinAmount) return 0;
     if (powerBank.hits < powerBank.hitsMax) return 0;
 
     const pos = powerBank.pos;
@@ -388,21 +410,16 @@ const PowerBankCheck = function (room: Room) {
 }
 
 const DepositCheck = function (room: Room) {
-    const hostiles = room.find(FIND_HOSTILE_CREEPS, {
-        filter: (creep) => creep.getActiveBodyparts(ATTACK) > 0 ||
-                           creep.getActiveBodyparts(RANGED_ATTACK) > 0
-    });
-    if (hostiles.length > 0) return null;
+    if (!room) return 0;
 
-    const deposits = room.deposit ?? room.find(FIND_DEPOSITS);
+    const deposits = room.find(FIND_DEPOSITS);
 
-    if (!deposits || deposits.length === 0) return null;
+    if (!deposits || deposits.length === 0) return 0;
 
-    let D_num = [];
+    let D_num = 0;
 
     for (const deposit of deposits) {
-        if (deposit.lastCooldown > 100) {
-            D_num.push(0);
+        if (deposit.lastCooldown >= DepositMaxCooldown) {
             continue;
         }
         const pos = deposit.pos;
@@ -416,14 +433,50 @@ const DepositCheck = function (room: Room) {
         ].forEach((p) => {
             if (terrain.get(p[0], p[1]) != TERRAIN_MASK_WALL) num++;
         })
-
         if (num == 0) {
-            D_num.push(0);
             continue;
         }
+        if (!room.memory) room.memory = {} as any;
+        if (!room.memory['depositMine']) room.memory['depositMine'] = {};
+        room.memory['depositMine'][deposit.id] = num;
 
-        D_num.push(num);
+        D_num += Math.min(num, 3);
+    }
+
+    for (const id in (room.memory['depositMine']||{})) {
+        if (Game.getObjectById(id)) continue;
+        delete room.memory['depositMine'][id];
     }
 
     return D_num;
+}
+
+// 获取到指定房间工作creep数量, 根据role分组
+const getCreepByTargetRoom = function (targetRoom: string) {
+    if (global.CreepByTargetRoom &&
+        global.CreepByTargetRoom.time === Game.time) {
+        // 如果当前tick已经统计过，则直接返回
+        return global.CreepByTargetRoom[targetRoom] || {};
+    } else {
+        // 如果当前tick没有统计过，则重新统计
+        global.CreepByTargetRoom = { time: Game.time };
+        for (const name in Game.creeps) {
+            const creep = Game.creeps[name];
+            const role = creep.memory.role;
+            const targetRoom = creep.memory.targetRoom;
+            if (!role || !targetRoom) continue;
+            if (!global.CreepByTargetRoom[targetRoom]) {
+                global.CreepByTargetRoom[targetRoom] = {};
+            }
+            if (!global.CreepByTargetRoom[targetRoom][role]) {
+                global.CreepByTargetRoom[targetRoom][role] = [];
+            }
+            global.CreepByTargetRoom[targetRoom][role].push({
+                ticksToLive: creep.ticksToLive,
+                spawning: creep.spawning,
+                homeRoom: creep.memory.homeRoom,
+            });
+        }
+        return global.CreepByTargetRoom[targetRoom] || {};
+    }
 }
