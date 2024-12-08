@@ -88,7 +88,7 @@ export default {
 
             if (amount >= 0) {
                 BotMemStructures[roomName][res] = amount;
-                global.log(`已添加 ${roomName} 的factory自动生产: ${res} - ${amount}。`);
+                global.log(`已设置 ${roomName} 的factory自动生产: ${res} - ${amount}。`);
                 return OK;
             } else {
                 delete BotMemStructures[roomName][res];

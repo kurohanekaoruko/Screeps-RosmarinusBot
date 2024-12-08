@@ -29,13 +29,18 @@ function AutoBuy(roomName: string, item: any) {
 
     // 检查房间资源储备
     const terminal = room.terminal;
+    const storage = room.storage;
     if (!terminal) return;
 
-    const terminalAmount = !item.store || item.store == 'terminal' ?
-                            (terminal.store[resourceType] || 0) : 0;
-    const storageAmount = room.storage && (!item.store || item.store == 'storage') ?
-                            (room.storage.store[resourceType] || 0) : 0;
-    const totalAmount = terminalAmount + storageAmount;
+    const terminalAmount = (terminal.store[resourceType] || 0);
+    const storageAmount = (room.storage.store[resourceType] || 0);
+
+    let totalAmount = 0;
+    if (!storage || !terminal.pos.inRangeTo(storage, 2)) {
+        totalAmount = terminalAmount
+    } else {
+        totalAmount = terminalAmount + storageAmount
+    }
     
     if (totalAmount >= amount) return;
 
@@ -46,8 +51,7 @@ function AutoBuy(roomName: string, item: any) {
     // 根据资源类型确定单次订单数量
     const orderAmount = (() => {
         if (resourceType !== RESOURCE_ENERGY) return 3000;
-        if (global.BotMem('rooms', roomName, 'spup')) return 30000;
-        return 20000;
+        return 50000;
     })()    // 单次订单量   
 
     // 检查是否已有同类型订单未完成
@@ -67,7 +71,7 @@ function AutoBuy(roomName: string, item: any) {
     // 如果已有同类型订单未完成，则更新价格
     if (existingOrder) {
         const price = global.order.getPrice(existingOrder.resourceType, ORDER_BUY);
-        if(price > existingOrder.price + 1 || price < existingOrder.price * 0.9) {
+        if(price > existingOrder.price + 0.1 || price < existingOrder.price - 1) {
             Game.market.changeOrderPrice(existingOrder.id, price);
             return OK;
         }
@@ -107,7 +111,7 @@ function AutoSell(roomName: string, item: any) {
     if(sellAmount <= 0) return;
 
     // 根据资源类型确定单次订单数量
-    const orderAmount = resourceType === RESOURCE_ENERGY ? 6000 : 3000;    // 单次订单量
+    const orderAmount = resourceType === RESOURCE_ENERGY ? 10000 : 3000;    // 单次订单量
     if(sellAmount < orderAmount) return;    // 如果出售的资源量小于单次订单数量，则不创建订单
 
     // 检查是否已有同类型订单未完成
@@ -126,7 +130,7 @@ function AutoSell(roomName: string, item: any) {
 
     if (existingOrder) {
         const price = global.order.getPrice(existingOrder.resourceType, ORDER_SELL);
-        if(price > existingOrder.price + 1 || price < existingOrder.price * 0.9) {
+        if(price > existingOrder.price + 0.1 || price < existingOrder.price - 1) {
             Game.market.changeOrderPrice(existingOrder.id, price);
         }
         return OK;

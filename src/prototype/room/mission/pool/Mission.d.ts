@@ -43,7 +43,7 @@ interface Room {
     // 添加资源发送任务
     SendMissionAdd(target: string, resourceType: string | ResourceConstant, amount: number): OK | void;
     // 添加孵化任务
-    SpawnMissionAdd(name: string, body: number[], level: number, role: string, memory: CreepMemory): OK | ERR_NOT_ENOUGH_ENERGY;
+    SpawnMissionAdd(name: string, body: number[], level: number, role: string, memory: CreepMemory): OK | -1;
 
     // 获取运输任务
     getTransportMission(creep: Creep): Task | null;
@@ -83,10 +83,10 @@ interface MissionPool {
 
 interface Task {
     id: string, // 任务id
-    type: 'transport' | 'manage' | 'build' | 'repair' | 'walls' | 'send' | 'spawn',  // 任务类型
     level: number,  // 优先级
+    type: 'transport' | 'manage' | 'build' | 'repair' | 'walls' | 'send' | 'spawn',  // 任务类型
     data: TransportTask | BuildTask | RepairTask | ManageTask | SendTask | SpawnTask | any // 任务数据
-    lock?: Id<Creep>, // 任务是否被锁定
+    lock?: Id, // 任务是否被锁定, 如果需要记录锁定者那么是id，否则以布尔值表示
 }
 
 interface TransportTask {
@@ -109,8 +109,8 @@ interface RepairTask {
 }
 
 interface ManageTask {
-    source: 'storage' | 'terminal' | 'link' | 'factory',  // 资源来源
-    target: 'storage' | 'terminal' | 'link' | 'factory',  // 资源目标
+    source: 'storage' | 'terminal' | 'link' | 'factory' | 'powerSpawn',  // 资源来源
+    target: 'storage' | 'terminal' | 'link' | 'factory' | 'powerSpawn',  // 资源目标
     resourceType: ResourceConstant,
     amount: number,
 }

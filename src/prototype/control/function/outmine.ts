@@ -113,12 +113,17 @@ export default {
             return OK;
         },
         // 立即开始到指定房间开采power
-        power(roomName: string, targetRoom: string, num: number) {
+        power(roomName: string, targetRoom: string, num: number, boostLevel?: number) {
             if (!roomName || !targetRoom || !num) return -1;
             const room = Game.rooms[roomName];
             if (!room) return;
             if (!room.memory['powerMine']) room.memory['powerMine'] = {};
-            room.memory['powerMine'][targetRoom] = num;
+            room.memory['powerMine'][targetRoom] = {
+                creep: num,      // creep队伍数
+                max: num,            // 最大孵化数量
+                count: 0,          // 已孵化数量
+                boostLevel: boostLevel || 0,     // 强化等级
+            };
             console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的Power开采队。`);
             return OK;
         },
@@ -141,6 +146,7 @@ export default {
                 delete room.memory['powerMine'][targetRoom]
             if ((!type || type == 'deposit') && room.memory['depositMine'])
                 delete room.memory['depositMine'][targetRoom]
+            if (!spawnmission) return OK;
             for (const mission of spawnmission) {
                 const data = mission.data;
                 if (data.memory.targetRoom == targetRoom) {

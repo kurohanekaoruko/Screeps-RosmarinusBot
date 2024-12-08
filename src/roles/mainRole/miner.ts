@@ -11,15 +11,23 @@ const UnitMiner = {
             return false;
         }
 
-        // 如果矿物未枯竭，则开始采集
-        if (mineral.mineralAmount > 0) {
-            if (creep.harvest(mineral) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(mineral, { visualizePathStyle: { stroke: '#ffaa00' } });
-            }
+        // 移动到矿物存储桶
+        const mineralContainer = creep.room.container.find(c => c.pos.inRangeTo(creep.room.mineral, 2)) || null;
+        if (mineralContainer && !creep.pos.isEqualTo(mineralContainer)) {
+            creep.moveTo(mineralContainer, { visualizePathStyle: { stroke: '#ffaa00' } });
         } else {
-            creep.say('矿物枯竭');
-            creep.suicide();
-            return false;
+            // 如果矿物未枯竭，则开始采集
+            if (mineral.mineralAmount > 0) {
+                if (creep.pos.isNearTo(mineral)) {
+                    creep.harvest(mineral);
+                } else {
+                    creep.moveTo(mineral, { visualizePathStyle: { stroke: '#ffaa00' } });
+                }
+            } else {
+                creep.say('矿物枯竭');
+                creep.suicide();
+                return false;
+            }
         }
 
         return creep.store.getFreeCapacity() === 0;

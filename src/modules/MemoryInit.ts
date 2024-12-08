@@ -3,6 +3,7 @@ export const MemoryInit = {
         const BotMemory =  global.BotMem();
         if(!BotMemory['rooms']) BotMemory['rooms'] = {};
         if(!BotMemory['structures']) BotMemory['structures'] = {};
+        if(!BotMemory['powerCreep']) BotMemory['powerCreep'] = {};
         if(!BotMemory['layout']) BotMemory['layout'] = {};
         if(!BotMemory['outmine']) BotMemory['outmine'] = {};
         if(!BotMemory['autoMarket']) BotMemory['autoMarket'] = {};

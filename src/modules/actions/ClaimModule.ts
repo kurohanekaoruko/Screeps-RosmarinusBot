@@ -1,11 +1,37 @@
 const ClaimModule = {
     tickEnd: function () {
-        if (Game.time % 10) return;
+        if (Game.time % 100) return;
         for (const flagName in Game.flags) {
             // 占领
             const claimFlag = flagName.match(/^([EW][1-9]+[NS][1-9]+)[-_#/]claim(?:[-_#/].*)?$/);
-            if (claimFlag) {
-                continue;
+            if (Game.time % 500 == 0 && claimFlag) {
+                const room = Game.rooms[claimFlag[1]];
+                if (!room.controller || !room.controller.my) continue;
+                const targetRoom = Game.flags[flagName].room;
+                if (!targetRoom || (targetRoom.controller && !targetRoom.controller.my)) {
+                    room.SpawnMissionAdd('', [], -1, 'claimer',{
+                        homeRoom: claimFlag[1],
+                        targetRoom: Game.flags[flagName].pos.roomName
+                    } as any);
+                }
+            }
+            // 援建
+            if (Game.time % 800 == 0 && claimFlag) {
+                const room = Game.rooms[claimFlag[1]];
+                if (!room.controller || !room.controller.my) continue;
+                room.SpawnMissionAdd('', [], 12, 'builder', {
+                    home: Game.flags[flagName].pos.roomName
+                } as any);
+            }
+
+            // 增援升级
+            const upgradFlag = flagName.match(/^([EW][1-9]+[NS][1-9]+)[-_#/]upgrad(?:[-_#/].*)?$/);
+            if (Game.time % 400 == 0 && upgradFlag) {
+                const room = Game.rooms[upgradFlag[1]];
+                if (!room.controller || !room.controller.my) continue;
+                room.SpawnMissionAdd('', [], 12, 'speedup-upgrad', {
+                    home: Game.flags[flagName].pos.roomName
+                } as any);
             }
             
             // 搜刮资源
@@ -13,7 +39,7 @@ const ClaimModule = {
             if (Game.time % 500 == 0 && despoilFlag) {
                 const room = Game.rooms[despoilFlag[1]];
                 if (!room.controller || !room.controller.my) continue;
-                room.SpawnMissionAdd('', [], -1, 'logistics', { 
+                room.SpawnMissionAdd('', [], -1, 'logistic', { 
                     homeRoom: despoilFlag[1],
                     targetRoom: Game.flags[flagName].pos.roomName
                 } as any);

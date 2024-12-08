@@ -64,9 +64,9 @@ ps:
 2.对于不想被对穿的creep（比如没有脚的中央搬运工）, 设置memory：
 creep.memory.dontPullMe = true;
 3.修路后希望手动更新房间内路径，可执行如下代码：
-require('超级移动优化').deletePathInRoom(roomName);
+global.BetterMove.deletePathInRoom(roomName);
 4.战斗中遇到敌方pc不断产生新rampart挡路的情况，目前是撞上建筑物才重新寻路（原版moveTo撞上也继续撞），如果觉得需要手动提前激活重新寻路则联系我讨论
-5.在控制台输入require('超级移动优化').print()获取性能信息，鼓励发给作者用于优化
+5.在控制台输入global.BetterMove.print()获取性能信息，鼓励发给作者用于优化
 */
 
 /***************************************

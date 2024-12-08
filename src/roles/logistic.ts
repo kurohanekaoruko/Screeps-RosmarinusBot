@@ -1,6 +1,6 @@
 function withdraw(creep: Creep) {
-    if (creep.room.name != creep.memory.targetRoom) {
-        creep.moveToRoom(creep.memory.targetRoom);
+    if (creep.room.name != creep.memory.sourceRoom) {
+        creep.moveToRoom(creep.memory.sourceRoom);
         return;
     }
 
@@ -99,8 +99,8 @@ function withdraw(creep: Creep) {
 }
 
 function transfer(creep: Creep) {
-    if (creep.room.name != creep.memory.homeRoom) {
-        creep.moveToRoom(creep.memory.homeRoom);
+    if (creep.room.name != creep.memory.targetRoom) {
+        creep.moveToRoom(creep.memory.targetRoom);
         return;
     }
 
@@ -121,10 +121,10 @@ function transfer(creep: Creep) {
     }
 }
 
-const LogisticsFunction = {
+const logisticFunction = {
     prepare: function (creep: Creep) {
-        const boosts = ['XKH2O', 'KH2O', 'KH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boost(boosts);
+        const boosts = ['XKH2O', 'KH2O', 'KH'];
+        creep.memory.boosted = creep.goBoost(boosts);
         if(creep.memory.boosted) return true;
         return false;
     },
@@ -138,4 +138,4 @@ const LogisticsFunction = {
     }
 };
 
-export default LogisticsFunction;
+export default logisticFunction;

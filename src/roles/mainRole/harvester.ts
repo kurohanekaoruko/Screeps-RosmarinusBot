@@ -87,17 +87,6 @@ const transfer = function (creep: Creep) {
         // 6级以上不创建
         if (creep.room.level >= 6) return false;
 
-        // 如果容器已存在，则不创建
-        const container = creep.room.container.find(c => creep.pos.inRangeTo(c, 2));
-        if (container) return false;
-        const link = creep.room.link.find(l => l.pos.inRangeTo(creep.pos, 2)) ?? null;
-        if (link) return false;
-
-        // 如果能量源不存在，或是不在能量源附近，则不创建
-        const tsid = creep.memory.targetSourceId;
-        const targetSource = Game.getObjectById(tsid) as Source;
-        if (!targetSource || !creep.pos.inRangeTo(targetSource, 1)) return false;
-
         // 检查是否有建筑工地
         const constructionSite = creep.pos.findClosestByRange(FIND_CONSTRUCTION_SITES, {
             filter: s => s.structureType === STRUCTURE_CONTAINER && s.pos.inRangeTo(creep.pos, 2)
@@ -107,10 +96,27 @@ const transfer = function (creep: Creep) {
         if (constructionSite) {
             creep.build(constructionSite);
         }
-        // 如果没有建筑工地，则创建
-        else {
+        // 没有建筑工地，则尝试创建
+        else if (Game.time % 50 === 0) {
+            // 如果容器已存在，则不创建
+            const container = creep.room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_CONTAINER
+            }).find(c => creep.pos.inRangeTo(c, 2));
+            if (container) return false;
+            // 如果link存在，则不建造
+            const link = creep.room.find(FIND_STRUCTURES, {
+                filter: s => s.structureType === STRUCTURE_LINK
+            }).find(l => l.pos.inRangeTo(creep.pos, 2));
+            if (link) return false;
+
+            // 如果能量源不存在，或是不在能量源附近，则不创建
+            const tsid = creep.memory.targetSourceId;
+            const targetSource = Game.getObjectById(tsid) as Source;
+            if (!targetSource || !creep.pos.inRangeTo(targetSource, 1)) return false;
+
             creep.room.createConstructionSite(creep.pos, STRUCTURE_CONTAINER);
         }
+        
         return true;
     }
 

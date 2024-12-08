@@ -12,8 +12,19 @@ function UpdateTransportMission(room: Room) {
 
 function UpdateEnergyMission(room: Room) {
     const storage = room.storage;
-    let energy = storage.store[RESOURCE_ENERGY];
+    const terminal = room.terminal;
+    let energy = (storage?.store[RESOURCE_ENERGY]||0) + (terminal?.store[RESOURCE_ENERGY]||0);
     if(energy < 3000) return;
+
+    let storageOrTerminal = null;
+
+    if(terminal && storage) {
+        storageOrTerminal = terminal.store[RESOURCE_ENERGY] > storage.store[RESOURCE_ENERGY] ? terminal : storage;
+    } else if(terminal) {
+        storageOrTerminal = terminal || storage;
+    }
+
+    if (!storageOrTerminal) return;
 
     // 检查spawn和扩展是否需要填充能量
     if(room.spawn) {
@@ -25,7 +36,7 @@ function UpdateEnergyMission(room: Room) {
             const posInfo = `${s.pos.x}/${s.pos.y}/${s.pos.roomName}`
             const taskdata = {
                 pos: posInfo,
-                source: storage.id,
+                source: storageOrTerminal.id,
                 target: s.id,
                 resourceType: RESOURCE_ENERGY,
                 amount: s.store.getFreeCapacity(RESOURCE_ENERGY),
@@ -44,7 +55,7 @@ function UpdateEnergyMission(room: Room) {
             const posInfo = `${t.pos.x}/${t.pos.y}/${t.pos.roomName}`;
             const taskdata = {
                 pos: posInfo,
-                source: storage.id,
+                source: storageOrTerminal.id,
                 target: t.id,
                 resourceType: RESOURCE_ENERGY,
                 amount: t.store.getFreeCapacity(RESOURCE_ENERGY),
@@ -57,7 +68,12 @@ function UpdateEnergyMission(room: Room) {
     if(room.getResourceAmount(RESOURCE_ENERGY) < 10000) return;
 
     // 检查powerSpawn是否需要填充能量
-    if(Game.time % 20 === 0 && room.level == 8 && room.powerSpawn) {
+    let center = global.BotMem('rooms', room.name, 'center');
+    let centerPos: RoomPosition;
+    if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
+    // 没设置中心或者powerSpawn不在中心时填充
+    if (Game.time % 20 === 0 && room.level == 8 && room.powerSpawn &&
+        (!centerPos || !room.powerSpawn.pos.inRangeTo(centerPos, 2))) {
         const powerSpawn = room.powerSpawn;
         const amount = powerSpawn.store.getFreeCapacity(RESOURCE_ENERGY);
         if(powerSpawn && powerSpawn.store.getFreeCapacity(RESOURCE_ENERGY) > 400 && energy >= amount) {
@@ -70,12 +86,12 @@ function UpdateEnergyMission(room: Room) {
                 resourceType: RESOURCE_ENERGY,
                 amount: amount,
             }
-            room.TransportMissionAdd(0, taskdata)
+            room.TransportMissionAdd(1, taskdata)
         }
     }
 
     // 检查lab是否需要填充能量
-    if(Game.time % 20 === 0 && room.level >= 6 && room.lab) {
+    if (Game.time % 20 === 0 && room.level >= 6 && room.lab) {
         const labs = room.lab
             .filter((l: StructureLab) => l && l.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
         labs.forEach((l: StructureLab) => {
@@ -117,6 +133,12 @@ function UpdateEnergyMission(room: Room) {
 // 检查powerSpawn是否需要填充power
 function UpdatePowerMission(room: Room) {
     if(room.level < 8 || !room.powerSpawn) return;
+    let center = global.BotMem('rooms', room.name, 'center');
+    let centerPos: RoomPosition;
+    if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
+    if (centerPos && room.powerSpawn.pos.inRangeTo(centerPos, 2)) return;
+    // 在中心附近2格内，不填充
+
     const storage = room.storage;
     const terminal = room.terminal;
     if(!storage && !terminal) return;
@@ -138,7 +160,7 @@ function UpdatePowerMission(room: Room) {
         resourceType: RESOURCE_POWER,
         amount: neededAmount,
     }
-    room.TransportMissionAdd(0, taskdata)
+    room.TransportMissionAdd(1, taskdata)
 }
 
 // 检查lab是否需要填充资源

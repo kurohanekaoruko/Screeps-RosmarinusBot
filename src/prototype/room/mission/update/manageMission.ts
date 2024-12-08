@@ -1,8 +1,9 @@
-import {LabMap} from "@/constant/ResourceConstant";
+import {LabMap,Goods} from "@/constant/ResourceConstant";
 
 function UpdateManageMission(room: Room) {
     CheckTerminalResAmount(room);  // 检查终端资源预留数量，不足则补充
     CheckFactoryResAmount(room); // 检查工厂资源数量，补充或搬出
+    CheckPowerSpawnResAmount(room); // 检查powerSpawn资源数量，补充
 }
 
 // 检查终端资源, 自动调度资源
@@ -15,25 +16,20 @@ function CheckTerminalResAmount(room: Room) {
     // 自动调度资源阈值
     const THRESHOLD = {
         source: {
-            RESOURCE_ENERGY: 15000,
+            energy: 15000,
             default: 6000
         },
         target: {
-            RESOURCE_ENERGY: 10000,
+            energy: 10000,
             default: 4000
         }
     }
     Object.keys(LabMap).forEach((r) => { THRESHOLD.source[r] = 15000; THRESHOLD.target[r] = 10000 } )
+    Goods.forEach((r) => { THRESHOLD.source[r] = 1200; THRESHOLD.target[r] = 1000 } )
 
     // 自动平衡资源排除项
     const exclude: ResourceConstant[] = [
         RESOURCE_METAL, RESOURCE_BIOMASS, RESOURCE_SILICON, RESOURCE_MIST,
-        RESOURCE_ALLOY, RESOURCE_CELL, RESOURCE_WIRE, RESOURCE_CONDENSATE,
-        RESOURCE_TUBE, RESOURCE_PHLEGM, RESOURCE_SWITCH, RESOURCE_CONCENTRATE,
-        RESOURCE_FIXTURES, RESOURCE_TISSUE, RESOURCE_TRANSISTOR, RESOURCE_EXTRACT,
-        RESOURCE_FRAME, RESOURCE_MUSCLE, RESOURCE_MICROCHIP, RESOURCE_SPIRIT,
-        RESOURCE_HYDRAULICS, RESOURCE_ORGANOID, RESOURCE_CIRCUIT, RESOURCE_EMANATION,
-        RESOURCE_MACHINE, RESOURCE_ORGANISM, RESOURCE_DEVICE, RESOURCE_ESSENCE,
         RESOURCE_COMPOSITE, RESOURCE_CRYSTAL, RESOURCE_LIQUID
     ];
 
@@ -119,6 +115,31 @@ function CheckFactoryResAmount(room: Room) {
         } else if (room.terminal && room.terminal.store.getFreeCapacity() >= 3000) {
             if (!room.storage.pos.inRange(room.terminal.pos, 2)) return false;
             room.ManageMissionAdd('f', 't', resourceType, 3000);
+        }
+    }
+}
+
+function CheckPowerSpawnResAmount(room: Room) {
+    const powerSpawn = room.powerSpawn;
+    if (!powerSpawn) return;
+    let center = global.BotMem('rooms', room.name, 'center');
+    let centerPos: RoomPosition;
+    if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
+    if (!centerPos || !room.powerSpawn.pos.inRangeTo(centerPos, 2)) return;
+
+    if (powerSpawn.store[RESOURCE_ENERGY] < 1000) {
+        if (room.storage && room.storage.store[RESOURCE_ENERGY] >= 5000) {
+            room.ManageMissionAdd('s', 'p', RESOURCE_ENERGY, 5000);
+        } else if (room.terminal && room.terminal.store[RESOURCE_ENERGY] >= 5000) {
+            room.ManageMissionAdd('t', 'p', RESOURCE_ENERGY, 5000);
+        }
+    }
+
+    if (powerSpawn.store[RESOURCE_POWER] < 50) {
+        if (room.storage && room.storage.store[RESOURCE_POWER] >= 100) {
+            room.ManageMissionAdd('s', 'p', RESOURCE_POWER, 100);
+        } else if (room.terminal && room.terminal.store[RESOURCE_POWER] >= 100) {
+            room.ManageMissionAdd('t', 'p', RESOURCE_POWER, 100);
         }
     }
 }

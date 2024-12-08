@@ -65,26 +65,43 @@ export default class BaseFunction extends PowerCreep {
         return false;
     }
     transferPower() {
-        if (this.store[RESOURCE_POWER] >= 100) {
-            const powerSpawn = this.room.powerSpawn;
-            if (!powerSpawn) return;
-            if (powerSpawn.store[RESOURCE_POWER] > 60) return;
-            if (this.pos.isNearTo(powerSpawn)) {
+        if(!global.BotMem('structures', this.room.name).powerSpawn) return false;
+
+        const powerSpawn = this.room.powerSpawn;
+        if (!powerSpawn) return;
+        const storage = this.room.storage;
+        if (!storage) return;
+        if (storage.store[RESOURCE_POWER] < 100) return;
+        if (storage.store[RESOURCE_ENERGY] < 10000) return;
+
+        if (this.pos.isNearTo(powerSpawn)) {
+            if (powerSpawn.store[RESOURCE_POWER] < 50 && this.store[RESOURCE_POWER] > 0) {
                 this.transfer(powerSpawn, RESOURCE_POWER);
-            } else {
-                this.moveTo(powerSpawn);
-            }
-        } else {
-            const storage = this.room.storage;
-            if (!storage) return;
-            if (storage.store[RESOURCE_POWER] < 100) return;
-            if (this.pos.isNearTo(storage)) {
-                const amount = Math.min(100, this.store.getFreeCapacity());
-                this.withdraw(storage, RESOURCE_POWER, amount);
-            } else {
-                this.moveTo(storage);
+                return true;
             }
         }
-        return true;
+
+        if (this.pos.isNearTo(storage)) {
+            if (powerSpawn.store[RESOURCE_POWER] > 60 && this.store[RESOURCE_POWER] > 0) {
+                this.transfer(storage, RESOURCE_POWER);
+                return true;
+            }
+            if (powerSpawn.store[RESOURCE_POWER] < 50 && this.store[RESOURCE_POWER] == 0) {
+                this.withdraw(storage, RESOURCE_POWER, 100);
+                return true;
+            }
+        }
+
+        if (powerSpawn.store[RESOURCE_POWER] < 50 && this.store[RESOURCE_POWER] > 0) {
+            this.moveTo(powerSpawn);
+            return true;
+        }
+        if (powerSpawn.store[RESOURCE_POWER] > 60 && this.store[RESOURCE_POWER] > 0 ||
+            powerSpawn.store[RESOURCE_POWER] < 50 && this.store[RESOURCE_POWER] == 0) {
+            this.moveTo(storage);
+            return true;
+        }
+        
+        return false;
     }
 }

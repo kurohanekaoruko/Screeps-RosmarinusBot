@@ -92,13 +92,13 @@ export default {
         copy({
             targets: [
                 {
-                    src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
+                    src: 'src/planner/dynamic/autoPlanner63.js',
                     dest: 'dist'
                 },
                 {
-                    src: 'src/planner/dynamic/autoPlanner63.js',
+                    src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
                     dest: 'dist'
-                }
+                },
             ]
         }),
         // 执行上传或者复制

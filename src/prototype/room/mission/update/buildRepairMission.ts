@@ -1,3 +1,5 @@
+import { compress } from '@/utils';
+
 // 发布建造维修任务
 function UpdateBuildRepairMission(room: Room) {
     // 查找所有受损的结构
@@ -48,11 +50,14 @@ function UpdateBuildRepairMission(room: Room) {
         const posInfo = `${site.pos.x}/${site.pos.y}/${site.pos.roomName}`
         const data = {target: site.id, pos: posInfo};
         let level = Math.floor((1 - site.progress / site.progressTotal) * 5);
-        if (site.structureType === STRUCTURE_EXTENSION) {
+        if (site.structureType === STRUCTURE_TERMINAL || site.structureType === STRUCTURE_STORAGE) {
+            level = 0;
+        }
+        else if (site.structureType === STRUCTURE_EXTENSION) {
             level += 5;
         }
-        else if (site.structureType === STRUCTURE_ROAD ||
-            site.structureType === STRUCTURE_CONTAINER) {
+        else if (site.structureType === STRUCTURE_RAMPART || site.structureType === STRUCTURE_WALL ||
+            site.structureType === STRUCTURE_ROAD || site.structureType === STRUCTURE_CONTAINER) {
             level += 10;
         }
         room.BuildRepairMissionAdd('build', level, data)
@@ -72,13 +77,13 @@ function UpdateWallRepairMission(room: Room) {
     const wallMem = memory['wall'] || [];
     const walls = room.find(FIND_STRUCTURES, {
         filter: (structure) => structure.hits < structure.hitsMax &&
-        (structure.structureType === STRUCTURE_WALL || structure.structureType === STRUCTURE_RAMPART) &&
-        (rampartMem.includes(structure.pos.x*100+structure.pos.y) || wallMem.includes(structure.pos.x*100+structure.pos.y))
+        (structure.structureType === STRUCTURE_WALL && wallMem.includes(compress(structure.pos.x,structure.pos.y)) ||
+        (structure.structureType === STRUCTURE_RAMPART && rampartMem.includes(compress(structure.pos.x,structure.pos.y))))
     });
     for(const structure of walls) {
         const { hitsMax, hits, id, pos } = structure;
         const posInfo = `${pos.x}/${pos.y}/${pos.roomName}`
-        if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD * 0.9) {  // 刷墙
+        if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD) {  // 刷墙
             const level = Math.floor(hits / hitsMax * 100) + 1; // 优先级
             const targetHits = level / 100 * hitsMax;
             const data = {target: id, pos: posInfo, hits: targetHits};

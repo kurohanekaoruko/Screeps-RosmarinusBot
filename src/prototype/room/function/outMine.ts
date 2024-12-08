@@ -1,4 +1,5 @@
 import { RoleLevelData, RoleData } from '@/constant/CreepConstant';
+import { decompress } from '@/utils';
 
 // 过道观察间隔
 const LookInterval = 10;
@@ -18,24 +19,22 @@ export default class OutMine extends Room {
     }
 
     EnergyMine() { // 能量矿
-        if (Game.time % 10) return;
+        if (Game.time % 10 != 1) return;
         const Mem = global.BotMem('outmine', this.name, 'energy');
         if (!Mem || !Mem.length) return;
         // 孵化任务数统计
         global.SpawnMissionNum[this.name] = this.getSpawnMissionAmount() || {};
         for (const roomName of Mem) {
             const targetRoom = Game.rooms[roomName];
-            const lv = this.getEffectiveRoomLevel();
-
+            
             if (!targetRoom) {
                 scoutSpawn(this, roomName);    // 侦查
                 continue;    // 没有房间视野不生成
             }
 
-            if(Game.time % 100 == 0 && targetRoom.memory['road']?.length > 0) {
+            if(Game.time % 100 == 50 && targetRoom.memory['road']?.length > 0) {
                 for(const road of targetRoom.memory['road']) {
-                    const x = Math.floor(road / 100);
-                    const y = road % 100;
+                    const [x, y] = decompress(road);
                     const pos = new RoomPosition(x, y, roomName);
                     if (pos.lookFor(LOOK_STRUCTURES).find(s => s.structureType == STRUCTURE_ROAD)) continue;
                     if (pos.lookFor(LOOK_CONSTRUCTION_SITES).length > 0) continue;
@@ -43,7 +42,7 @@ export default class OutMine extends Room {
                 }
             }
 
-            const sourceNum = targetRoom.source?.length ?? 0;
+            const sourceNum = targetRoom.source?.length || targetRoom.find(FIND_SOURCES).length || 0;
             if (sourceNum == 0) continue;
 
             const hostiles = targetRoom.find(FIND_HOSTILE_CREEPS, {
@@ -56,9 +55,13 @@ export default class OutMine extends Room {
                 )
             });
 
-            if (outDefendSpawn(this, targetRoom, lv, hostiles)) continue;    // 防御
+            const lv = this.getEffectiveRoomLevel();
 
-            if (hostiles.length > 0) continue;    // 有带攻击组件的敌人时不生成
+            // 六级以上才防御外矿
+            if (this.level >= 6 && outDefendSpawn(this, targetRoom, lv, hostiles)) continue;
+
+            // 有带攻击组件的敌人时不孵化
+            if (hostiles.length > 0) continue;
 
             const controller = targetRoom.controller;
             const myUserName = this.controller.owner.username;
@@ -78,7 +81,9 @@ export default class OutMine extends Room {
     LookHighWay() {
         const outminePower = global.BotMem('rooms', this.name, 'outminePower');
         const outmineDeposit = global.BotMem('rooms', this.name, 'outmineDeposit');
+        // 没开启自动挖就不找
         if (!outminePower && !outmineDeposit) return;
+
         if (Game.time % LookInterval > 1) return;
         // 监控列表
         let lookList = global.BotMem('outmine', this.name, 'highway');
@@ -89,6 +94,7 @@ export default class OutMine extends Room {
             // 观察编号
             let lookIndex = Math.floor(Game.time / LookInterval) % lookList.length;
             const roomName = lookList[lookIndex];
+            // 没有视野才看
             if (!Game.rooms[roomName])
                 this.observer.observeRoom(roomName);
             return;
@@ -98,15 +104,21 @@ export default class OutMine extends Room {
             if (/^[EW]\d*[1-9][NS]\d*[1-9]$/.test(roomName)) continue;
 
             const room = Game.rooms[roomName];
-            if (!room) continue;
+            if (!room) continue;    // 没有视野不处理
+
             if (!this.memory['powerMine']) this.memory['powerMine'] = {};
             if (!this.memory['depositMine']) this.memory['depositMine'] = {};
-
+            
             // power
             if (outminePower && !this.memory['powerMine'][roomName]) {
                 let P_num = PowerBankCheck(room);
                 if (P_num) {
-                    this.memory['powerMine'][roomName] = P_num;
+                    this.memory['powerMine'][roomName] = {
+                        creep: P_num,      // creep队伍数
+                        max: 5,            // 最大孵化数量
+                        count: 0,          // 已孵化数量
+                        boostLevel: 0,     // 强化等级
+                    }
                     console.log(`在 ${roomName} 发现 PowerBank, 已加入开采队列。`);
                     console.log(`将从 ${this.name} 派出总共 ${P_num} 数量的采集队。`);
                 }
@@ -117,17 +129,6 @@ export default class OutMine extends Room {
                 if (!powerBank) {
                     delete this.memory['powerMine'][roomName];
                     console.log(`${roomName} 的 PowerBank 已耗尽, 已移出开采队列。`);
-                }
-            } else if (!outminePower) {
-                // 如果没开启 power 自动开采，那么发邮件通知powerBank情况
-                if(!global.PowerBankNotify) global.PowerBankNotify = {};
-                const powerBank = room.powerBank?.[0] ?? room.find(FIND_STRUCTURES, {
-                    filter: (structure) => structure.structureType === STRUCTURE_POWER_BANK
-                })[0];
-                if (powerBank && powerBank.power >= PowerMinAmount &&
-                    !global.PowerBankNotify[powerBank.id]) {
-                    Game.notify(`发现 PowerBank, 房间: ${roomName}, power量: ${powerBank.power}。`);
-                    global.PowerBankNotify[powerBank.id] = true;
                 }
             }
 
@@ -153,57 +154,67 @@ export default class OutMine extends Room {
 
     PowerMine() {
         if (Game.time % LookInterval != 1) return;
-        const roomList = this.memory['powerMine'];
-        if (!roomList || Object.keys(roomList).length == 0) return;
+        const powerMines = this.memory['powerMine'];
+        if (!powerMines || Object.keys(powerMines).length == 0) return;
 
         // 孵化任务数统计
         global.SpawnMissionNum[this.name] = this.getSpawnMissionAmount() || {};
         
-        for (const targetRoom in roomList) {
+        for (const targetRoom in powerMines) {
             const room = Game.rooms[targetRoom];
             const powerBank = room?.powerBank?.[0] ?? room?.find(FIND_STRUCTURES, {
                 filter: (structure) => structure.structureType === STRUCTURE_POWER_BANK
             })[0];
-            let pa = 0, ph = 0;
-            let P_num = roomList[targetRoom];
+            
             // 统计以targetRoom为工作目标的所有role情况
             const CreepByTargetRoom = getCreepByTargetRoom(targetRoom);
-            if (!powerBank || powerBank.hits > 300000) {
-                pa = (CreepByTargetRoom['power-attack'] || [])
-                    .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
-                ph = (CreepByTargetRoom['power-heal'] || [])
-                    .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
-            } else {
-                pa = (CreepByTargetRoom['power-attack'] || []).length;
-                ph = (CreepByTargetRoom['power-heal'] || []).length;
-                P_num = 1;
-            }
-            let panum = pa + (global.SpawnMissionNum[this.name]['power-attack']||0);
-            let phnum = ph + (global.SpawnMissionNum[this.name]['power-heal']||0);
-            for (let i = Math.min(panum, phnum); i < P_num; i++) {
-                if (panum < P_num) { 
-                    const memory = { homeRoom: this.name, targetRoom: targetRoom } as CreepMemory;
-                    this.SpawnMissionAdd('PA', [], -1, 'power-attack', memory);
-                    panum++;
+            let pa = 0, ph = 0;
+            let mineData = powerMines[targetRoom];
+            // 数量未达到上限才考虑孵化
+            if (mineData.count < mineData.max) {
+                if (!powerBank || powerBank.hits > 300000) {
+                    pa = (CreepByTargetRoom['power-attack'] || [])
+                        .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
+                    ph = (CreepByTargetRoom['power-heal'] || [])
+                        .filter((c: any) => c.spawning || c.ticksToLive > 100).length;
+                } else {
+                    pa = (CreepByTargetRoom['power-attack'] || []).length;
+                    ph = (CreepByTargetRoom['power-heal'] || []).length;
+                    mineData.creep = 1;
                 }
-                if (phnum < P_num) { 
-                    const memory = { homeRoom: this.name, targetRoom: targetRoom } as CreepMemory;
-                    this.SpawnMissionAdd('PH', [], -1, 'power-heal', memory);
-                    phnum++;
+                let panum = pa + (global.SpawnMissionNum[this.name]['power-attack']||0);
+                let phnum = ph + (global.SpawnMissionNum[this.name]['power-heal']||0);
+                // 不能超过设定的同时工作队伍数
+                for (let i = Math.min(panum, phnum); i < mineData.creep; i++) {
+                    if (panum < mineData.creep) { 
+                        const memory = { homeRoom: this.name, targetRoom: targetRoom, boostLevel: mineData.boostLevel } as CreepMemory;
+                        this.SpawnMissionAdd('PA', [], -1, 'power-attack', memory);
+                        panum++;
+                    }
+                    if (phnum < mineData.creep) { 
+                        const memory = { homeRoom: this.name, targetRoom: targetRoom, boostLevel: mineData.boostLevel } as CreepMemory;
+                        this.SpawnMissionAdd('PH', [], -1, 'power-heal', memory);
+                        phnum++;
+                    }
+                    mineData.count += 1;
+                    if (mineData.count >= mineData.max) break;
                 }
             }
 
             if (!room) continue;
-
-            if (powerBank && powerBank.hits < powerBank.hitsMax / (P_num==1?4:2)) {
+            if (!powerBank) continue;
+            const maxPc = powerBank.power / 1250;
+            // 累积孵化数量到达指定值就不再孵化
+            if (mineData.carry >= maxPc) continue;
+            if (powerBank.hits < powerBank.hitsMax / (mineData.creep==1?4:2)) {
                 const pc = (CreepByTargetRoom['power-carry'] || [])
                             .filter((c: any) => c.spawning || c.ticksToLive > 150).length;
                 if (pa < 1 && ph < 1) continue;
                 const memory = { homeRoom: this.name, targetRoom: targetRoom };
                 const pcnum = pc + (global.SpawnMissionNum[this.name]['power-carry']||0);
-                const maxPc = powerBank.power / 1250;
                 for (let i = pcnum; i < maxPc; i++) {
                     this.SpawnMissionAdd('PC', [], -1, 'power-carry', memory as any)
+                    mineData.carry = (mineData.carry || 0) + 1
                 }
             }
         }
@@ -231,7 +242,7 @@ export default class OutMine extends Room {
             const dt = (CreepByTargetRoom['deposit-transfer'] || [])
                         .filter((c: any) => c.spawning || c.ticksToLive > 150).length;
             const dtnum = dt + (global.SpawnMissionNum[this.name]['deposit-transfer']||0)
-            if(dtnum < 2) {
+            if(dtnum < D_num / 2) {
                 const memory = { homeRoom: this.name, targetRoom: targetRoom } as any;
                 this.SpawnMissionAdd('DT', [], -1, 'deposit-transfer', memory);
             }
@@ -339,7 +350,7 @@ const outCarrySpawn = function (homeRoom: Room, targetRoom: Room, num: number) {
 
 // 预定
 const outReserverSpawn = function (homeRoom: Room, targetRoom: Room) {
-    if (!targetRoom.controller) return false;
+    if (!targetRoom.controller || targetRoom.controller.my) return false;
     if(Game.rooms[homeRoom.name].controller.level < 4) return false;
 
     if (targetRoom.controller.reservation &&
@@ -351,6 +362,7 @@ const outReserverSpawn = function (homeRoom: Room, targetRoom: Room) {
 
     const spawnNum = global.SpawnMissionNum[homeRoom.name]['out-claim'] || 0;
     if (outerReservers + spawnNum >= 1) return false;
+    console.log('预定', outerReservers + spawnNum);
 
     const memory = { homeRoom: homeRoom.name, targetRoom: targetRoom.name } as CreepMemory;
     homeRoom.SpawnMissionAdd('OCL', [], -1, 'out-claim', memory);
@@ -398,6 +410,7 @@ const PowerBankCheck = function (room: Room) {
         [pos.x-1, pos.y], [pos.x+1, pos.y],
         [pos.x-1, pos.y+1], [pos.x, pos.y+1], [pos.x+1, pos.y+1],
     ].forEach((p) => {
+        if (p[0] <= 1 || p[0] >= 48 || p[1] <= 1 || p[1] >= 48) return;
         if (terrain.get(p[0], p[1]) != TERRAIN_MASK_WALL) num++;
     })
 

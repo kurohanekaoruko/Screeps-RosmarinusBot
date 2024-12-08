@@ -41,7 +41,7 @@ export default [
             return '###  布局指令列表  ###\n' +
                     'layout.set(roomName, layout, x, y): 设置房间布局\n' +
                     ' - roomName: 房间名 layout: 静态布局名称 x,y: 布局中心\n' +
-                    ' - 可用的布局有: dev、hoho、tea、ros\n' +
+                    ' - 可用的布局有: hoho、tea、ros\n' +
                     'layout.auto(roomName): 开关房间自动建筑, 需要设置布局\n' +
                     'layout.remove(roomName): 删除指定房间布局Memory\n' +
                     ' - 如果重新设置布局, 就需要用这个手动删除\n' +

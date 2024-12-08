@@ -27,9 +27,9 @@ export default class PowerCreepRun extends PowerCreep {
 
 const PowerCreepAction = {
     'F': function(pc: PowerCreep) {
-        if(pc.transferPower())  return;      // 填充power
         if(pc.withdrawOPS())  return;      // 取出ops
         if(pc.Operate_Factory())  return;    // 操作工厂
+        if(pc.transferPower())  return;      // 填充power
     },
     'O': function(pc: PowerCreep) {
         if(pc.withdrawOPS())  return;      // 取出ops

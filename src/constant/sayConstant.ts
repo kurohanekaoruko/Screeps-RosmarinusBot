@@ -105,6 +105,8 @@ export const sayConstant = [
 
 ]
 
+export const attackSayConstant = []
+
 export const deathSayConstant = [
     
 ]

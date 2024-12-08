@@ -12,9 +12,7 @@ function manageMission(creep: Creep): boolean {
 
     /** 获取结构对象 */
     const getStructure = (structureKey: string) => {
-        return structureKey === 'storage' || structureKey === 'terminal' || structureKey === 'factory'
-               ? creep.room[structureKey] 
-               : null;
+        return creep.room[structureKey] || null;
     };
 
     const taskdata = task.data as ManageTask
@@ -44,9 +42,44 @@ function manageMission(creep: Creep): boolean {
     if (handleOtherResources(creep, type)) return true;
 
     if (creep.store.getUsedCapacity(type) === 0) {
-        return handleWithdraw(creep, source, type, amount, task);
+        // 提取资源
+        if (creep.store.getFreeCapacity() === 0) return false;
+        if (source.store[type] === 0) {
+            creep.room.deleteMissionFromPool('manage', task.id);
+            return false;
+        }
+        const withdrawAmount = Math.min(amount, creep.store.getFreeCapacity(type), source.store[type]);
+        if (creep.pos.isNearTo(source)) {
+            creep.withdraw(source, type, withdrawAmount);
+        }
+        else creep.moveTo(source,  { visualizePathStyle: { stroke: '#ffaa00' }})
+
+        return true;
     } else {
-        return handleTransfer(creep, target, type, amount, task);
+        if (!creep.pos.isNearTo(target)) {
+            creep.moveTo(target, {reusePath: 10, visualizePathStyle: {stroke: '#ffaa00'}});
+            return true;
+        }
+    
+        const transferResult = creep.transfer(target, type);
+        if (transferResult === ERR_FULL) {
+            creep.room.deleteMissionFromPool('manage', task.id);
+            return true;
+        }
+    
+        if (transferResult !== OK) {
+            return true;
+        }
+    
+        const transferredAmount = Math.min(creep.store[type], amount);
+        const data = task.data as TransportTask;
+        data.amount -= transferredAmount;
+        
+        if (data.amount <= 0) {
+            creep.room.deleteMissionFromPool('manage', task.id);
+        }
+        
+        return true;
     }
 }
 
@@ -76,69 +109,14 @@ function handleOtherResources(creep: Creep, targetType: ResourceConstant): boole
     return false;
 }
 
-/**
- * 处理从源结构提取资源
- * @param {Creep} creep - 执行任务的 creep
- * @param {Structure} source - 源结构
- * @param {string} type - 资源类型
- * @param {number} amount - 需要提取的数量
- * @param {task} task - 任务对象
- * @returns {boolean} - 是否成功处理
- */
-function handleWithdraw(creep: Creep, source: any, type: ResourceConstant, amount: number, task: Task): boolean {
-    if (creep.store.getFreeCapacity() === 0) return false;
-    
-    if (source.store[type] === 0) {
-        creep.room.deleteMissionFromPool('manage', task.id);
-        return false;
-    }
 
-    const withdrawAmount = Math.min(amount, creep.store.getFreeCapacity(type), source.store[type]);
-    if (creep.pos.isNearTo(source)) creep.withdraw(source, type, withdrawAmount)
-    else creep.moveTo(source,  { visualizePathStyle: { stroke: '#ffaa00' }})
 
-    return true;
-}
-
-/**
- * 处理向目标结构转移资源
- * @param {Creep} creep - 执行任务的 creep
- * @param {Structure} target - 目标结构
- * @param {string} type - 资源类型
- * @param {number} amount - 需要转移的数量
- * @param {Array} task - 管理任务队列
- * @returns {boolean} - 是否成功处理
- */
-function handleTransfer(creep: Creep, target: any, type: ResourceConstant, amount: number, task: Task): boolean {
-    if (!creep.pos.isNearTo(target)) {
-        creep.moveTo(target, {reusePath: 10, visualizePathStyle: {stroke: '#ffaa00'}});
-        return true;
-    }
-
-    const transferResult = creep.transfer(target, type);
-    if (transferResult === ERR_FULL) {
-        creep.room.deleteMissionFromPool('manage', task.id);
-        return true;
-    }
-
-    if (transferResult !== OK) {
-        return true;
-    }
-
-    const transferredAmount = Math.min(creep.store[type], amount);
-    const data = task.data as TransportTask;
-    data.amount -= transferredAmount;
-    
-    if (data.amount <= 0) {
-        creep.room.deleteMissionFromPool('manage', task.id);
-    }
-    
-    return true;
-}
 
 function LinkEnergyTransfer(creep: Creep) {
     const storage = creep.room.storage;
     const terminal = creep.room.terminal;
+    if (!storage && !terminal) return;
+
     let controllerLink = null;
     let manageLink = null;
     let normalLink = [];
@@ -157,6 +135,8 @@ function LinkEnergyTransfer(creep: Creep) {
         normalLink.push(link);
     }
     const nlink = normalLink.find((link: any) => link.store[RESOURCE_ENERGY] < 400);
+
+    if (!manageLink) return; // 没有中心Link，不执行任务
 
     // 向link转移能量
     if (controllerLink && creep.room.level < 8 && controllerLink.store[RESOURCE_ENERGY] < 400) {
@@ -194,12 +174,11 @@ const manageFunction = function (creep: Creep) {
     const storage = creep.room.storage;
     const terminal = creep.room.terminal;
 
-    
     // 搬运任务
     if (manageMission(creep)) {
         return;
     }
-
+    // 取放Link
     if (LinkEnergyTransfer(creep)) {
         return;
     }
@@ -211,15 +190,15 @@ const manageFunction = function (creep: Creep) {
     if (target && resourceType && creep.store[resourceType] > 0)
         return creep.transferOrMoveTo(target, resourceType);
     
-    // 移动到布局中心
-    const centralPos = global.BotMem('rooms', creep.room.name, 'center');
-    if (centralPos) {
-        const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);
-        if (!creep.pos.isEqualTo(pos)) {
-            creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
-            return;
-        }
-    }
+    // // 没有任务时移动到布局中心
+    // const centralPos = global.BotMem('rooms', creep.room.name, 'center');
+    // if (centralPos) {
+    //     const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);
+    //     if (!creep.pos.isEqualTo(pos)) {
+    //         creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
+    //         return;
+    //     }
+    // }
     return;
 };
 

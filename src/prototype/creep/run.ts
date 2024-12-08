@@ -1,5 +1,5 @@
 import { RoleData } from '@/constant/CreepConstant';
-import { sayConstant } from '@/constant/sayConstant';
+import { sayConstant, attackSayConstant } from '@/constant/sayConstant';
 
 export default class CreepRun extends Creep {
     run() {
@@ -47,12 +47,21 @@ export default class CreepRun extends Creep {
             return;
         }
 
-        if (Math.random() > 0.01) return;
+        if (Math.random() > 0.008) return;
         this.memory.sayText = [];
-        const text = sayConstant[Math.floor(Math.random() * sayConstant.length)];
+
+        let text = [];
+        if (this.room.my || !this.room.controller || !this.room.controller.owner ||
+            Memory['whitelist']?.includes(this.room.controller.owner.username)) {
+            text = sayConstant[Math.floor(Math.random() * sayConstant.length)];
+        } else {
+            text = attackSayConstant[Math.floor(Math.random() * sayConstant.length)];
+        }
+
+        if(!text) return;
+
         if(typeof text === "string") {
-            this.memory.sayText.push(text);
-            this.memory.sayText.push('');
+            this.say(text, true);
         } else {
             text.forEach((t:string) => {
                 this.memory.sayText.push(t)

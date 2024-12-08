@@ -18,8 +18,12 @@ export default class StructureWork extends Room {
 
     SpawnWork() {
         if (!this.spawn) return;
+        const spawns = []
         this.spawn.forEach(spawn => {
-            if (!spawn.spawning) return;
+            if (!spawn.spawning) {
+                spawns.push(spawn);
+                return;
+            }
             const code = spawn.spawning.name.match(/\[(\w+)\]/)?.[1];
             this.visual.text(
                 `${code} 🕒${spawn.spawning.remainingTime}`,
@@ -33,18 +37,18 @@ export default class StructureWork extends Room {
             )
         })
 
+        // 没有可用spawn则不处理
+        if (spawns.length == 0) return;
+
         // 处理 Spawn 孵化逻辑
         if (Game.time % 10) return;
-        if (this.energyAvailable < 300) return;
+        if (this.energyAvailable < 250) return;
         if (!this.checkMissionInPool('spawn')) return;
 
-        // 获取当前房间的等级，如果房间扩展不足，则返回较低的等级
-        const lv = this.getEffectiveRoomLevel();
         let hc = null;
     
         // 如果有能量，则生产 creep
-        this.spawn.forEach(spawn => {
-            if (!spawn || spawn.spawning) return;
+        spawns.forEach(spawn => {
             const task = this.getSpawnMission();
             if (!task) return;
             if (!task.data?.memory?.role) {
@@ -52,7 +56,7 @@ export default class StructureWork extends Room {
                 return;
             }
             const data = task.data as SpawnTask;
-            const role = data.memory.role;
+            let role = data.memory.role;
             const number = (Game.time*36*36 + Math.floor(Math.random()*36*36))
                             .toString(36).slice(-4).toUpperCase();
             const name = `[${data.name||RoleData[role].code}]#${number}`;
@@ -67,17 +71,24 @@ export default class StructureWork extends Room {
                 this.submitSpawnMission(task.id);
                 return;
             }
+            const cost = this.CalculateEnergy(bodypart);
+            if (cost > this.energyCapacityAvailable) {
+                this.deleteMissionFromPool('spawn', task.id);
+                return;
+            }
             const result = spawn.spawnCreep(bodypart, name, { memory: data.memory });
             if (result == OK) {
+                console.log(`[${this.name}] Spawn ${name} ${role}`);
                 if (!global.CreepNum) global.CreepNum = {};
                 if (!global.CreepNum[this.name]) global.CreepNum[this.name] = {};
                 global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
                 this.submitSpawnMission(task.id);
                 return;
             } else {
-                if (Game.time % 30) return;
+                if (Game.time % 20) return;
                 if (hc && hc >= 2) return;
-                if (role !== 'harvester' && role !== 'transport' && role !== 'carrier') return;
+                if (role !== 'harvester' && role !== 'transport' && role !== 'carrier' && role !== 'manage') return;
+                if (role == 'manage') role = 'transport';
                 const num = this.find(FIND_MY_CREEPS, {filter: c => c.memory.role == role}).length;
                 if (num !== 0) return;
                 if (role !== 'carrier' || (role == 'carrier' && this.level < 4)) {
@@ -119,7 +130,6 @@ export default class StructureWork extends Room {
                 if (Hostiles.length == 0) return;
                 let index = Math.floor(Math.random() * Hostiles.length);
                 tower.attack(Hostiles[index]);
-                return;
             })
             return;
         }
@@ -127,7 +137,7 @@ export default class StructureWork extends Room {
         // 治疗己方单位
         if (!global.towerHealTargets) global.towerHealTargets = {};
         if (Game.time % 10 == 0) {
-            global.towerHealTargets[this.name] = this.find(FIND_MY_POWER_CREEPS, {
+            global.towerHealTargets[this.name] = this.find(FIND_POWER_CREEPS, {
                 filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
                 }).map(c => c.id);
             if (global.towerHealTargets[this.name].length == 0) {
@@ -138,14 +148,16 @@ export default class StructureWork extends Room {
         }
         let healers = (global.towerHealTargets[this.name]||[])
                 .map((id: Id<Creep>) => Game.getObjectById(id))
-                .filter((c: Creep | null) => c) as Creep[] | PowerCreep[];
+                .filter((c: Creep | null) => c && c.hits < c.hitsMax) as Creep[] | PowerCreep[];
         if (healers.length > 0) {
             towers.forEach(tower => {
-                let index = Math.floor(Math.random() * Hostiles.length);
+                let index = Math.floor(Math.random() * healers.length);
                 tower.heal(healers[index]);
             })
             return;
         }
+
+
 
         // 修复建筑物
         if (!global.towerTaskTarget) global.towerTaskTarget = {};
@@ -181,6 +193,10 @@ export default class StructureWork extends Room {
 
         if (Game.time % 5 != 0) return;
         
+        let center = global.BotMem('rooms', this.name, 'center');
+        let centerPos: RoomPosition;
+        if (center) centerPos = new RoomPosition(center.x, center.y, this.name);
+
         let sourceLinks = []
         let controllerLink = null;
         let manageLink = null;
@@ -194,7 +210,7 @@ export default class StructureWork extends Room {
                 controllerLink = link;
                 continue;
             }
-            if(link.pos.inRangeTo(this.storage, 1) || link.pos.inRangeTo(this.terminal, 1)) {
+            if(centerPos && link.pos.inRangeTo(centerPos, 1)) {
                 manageLink = link;
                 continue;
             }

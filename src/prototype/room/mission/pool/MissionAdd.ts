@@ -15,6 +15,7 @@ export default class MissionAdd extends Room {
             t: 'terminal',
             l: 'link',
             f: 'factory',
+            p: 'powerSpawn'
         }
         if(source in structures) source = structures[source];
         if(target in structures) target = structures[target];
@@ -74,16 +75,21 @@ export default class MissionAdd extends Room {
 
     // 添加孵化任务
     SpawnMissionAdd(name: string, body: number[], level: number, role: string, memory: CreepMemory) {
+        if (!RoleData[role]) {
+            console.log(`role ${role} 不存在`);
+            return -1;
+        }
         if(level < 0) level = RoleData[role].level;
         const bodypart = this.GenerateBodys(body, role);
         const energy = this.CalculateEnergy(bodypart);
-        if(energy > this.energyCapacityAvailable) return ERR_NOT_ENOUGH_ENERGY;
+        if(energy > this.energyCapacityAvailable) return -1;
         memory.role = role;
         this.addMissionToPool('spawn', level, {name, body, memory, energy})
         if (!global.SpawnMissionNum) global.SpawnMissionNum = {};
         if (!global.SpawnMissionNum[this.name]) global.SpawnMissionNum[this.name] = {};
         if (!global.SpawnMissionNum[this.name][role]) global.SpawnMissionNum[this.name][role] = 0;
-        global.SpawnMissionNum[this.name][role]++;
+        global.SpawnMissionNum[this.name][role] = global.SpawnMissionNum[this.name][role] + 1;
         return OK;
     }
+
 }

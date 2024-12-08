@@ -66,7 +66,22 @@ const deposit_harvest = {
                 creep.harvest(deposit);
                 return false;
             }
+            if (creep.getActiveBodyparts(ATTACK) > 0) {
+                const hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1, {
+                    filter: c => c.body.some(p => p.type == WORK || p.type == HEAL)
+                });
+                if (hostiles.length > 0) creep.attack(hostiles[0]);
+            }
         } else{
+            if (creep.getActiveBodyparts(ATTACK) > 0) {
+                const hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1, {
+                    filter: c => c.body.some(p => p.type == WORK || p.type == HEAL)
+                });
+                if (hostiles.length > 0) {
+                    creep.attack(hostiles[0]);
+                    return false;
+                }
+            }
             if (creep.memory.dontPullMe) creep.memory.dontPullMe = false;
             creep.moveTo(deposit, {
                 visualizePathStyle: { stroke: '#ffaa00' },
@@ -86,13 +101,6 @@ const deposit_harvest = {
                 }
                 return false;
             }
-        }
-
-        if (creep.getActiveBodyparts(ATTACK) > 0) {
-            const hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1, {
-                filter: c => c.body.some(p => p.type == WORK || p.type == HEAL)
-            });
-            if (hostiles.length > 0) creep.attack(hostiles[0]);
         }
 
         return creep.store.getFreeCapacity() == 0;

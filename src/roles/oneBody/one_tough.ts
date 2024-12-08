@@ -37,7 +37,7 @@ const one_tough = function (creep: Creep) {
 
     if (!creep.memory.boosted) {
         const boost = ['XGHO2', 'GHO2', 'GO', 'XLHO2', 'LHO2', 'LO'];
-        creep.memory.boosted = creep.boost(boost);
+        creep.memory.boosted = creep.goBoost(boost);
         return
     }
 
@@ -49,6 +49,14 @@ const one_tough = function (creep: Creep) {
     if(one_tough_action.move(creep)) return;
 
     if(one_tough_action.moveToRoom(creep)) return;
+
+    if(creep.body.some(part => part.type === RANGED_ATTACK)) {
+        const target = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 3)[0];
+        if(target) {
+            creep.rangedAttack(target);
+            return;
+        }
+    }
 }
 
 export default one_tough;

@@ -6,7 +6,7 @@ const dismantle = function (creep: Creep) {
     }
     if (!creep.memory.boosted) {
         const boosts = ['XZH2O', 'ZH2O', 'ZH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boost(boosts);
+        creep.memory.boosted = creep.goBoost(boosts);
         return
     }
 

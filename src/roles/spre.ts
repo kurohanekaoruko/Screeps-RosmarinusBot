@@ -1,37 +1,75 @@
-const RepairWork = function (creep: Creep) {
-    let target = Game.getObjectById(creep.memory.cache.targetId) as StructureRampart | StructureWall | undefined;
+import { compress } from '@/utils';
 
-    if (!creep.memory.cache.targetId || !target || target.hits >= target.hitsMax) {
+const RepairWork = function (creep: Creep) {
+    let target = Game.getObjectById(creep.memory.cache.targetId) as StructureRampart | StructureWall | null;
+
+    if (!target || target.hits > 100e6 || target.hits == target.hitsMax) {
         const memory = global.BotMem('layout', creep.room.name);
         const rampartMem = memory['rampart'] || [];
         const wallMem = memory['wall'] || [];
-        const rampart = creep.room[STRUCTURE_RAMPART] || [];
-        const constructedWall = creep.room[STRUCTURE_WALL] || [];
-        const targets = [...rampart, ...constructedWall]
-            .filter(structure => {
+        // 附近三格
+        let ramwalls = creep.pos.findInRange(FIND_STRUCTURES, 3, {
+            filter: structure => {
+                if (structure.structureType !== STRUCTURE_RAMPART &&
+                    structure.structureType !== STRUCTURE_WALL) return false;
                 if (structure.structureType == STRUCTURE_RAMPART && 
-                    !rampartMem.includes(structure.pos.x*100+structure.pos.y)) return false;
+                    !rampartMem.includes(compress(structure.pos.x,structure.pos.y))) return false;
                 if (structure.structureType == STRUCTURE_WALL &&
-                    !wallMem.includes(structure.pos.x*100+structure.pos.y)) return false;
-                if (structure.hits < structure.hitsMax) return true;
-                return false;
+                    !wallMem.includes(compress(structure.pos.x,structure.pos.y))) return false;
+                return structure.hits < Math.min(100e6, structure.hitsMax);
+            }
+        })
+        // 没有就找房间内全部
+        if (ramwalls.length == 0) {
+            ramwalls = creep.room.find(FIND_STRUCTURES, {
+                filter: structure => {
+                    if (structure.structureType !== STRUCTURE_RAMPART &&
+                        structure.structureType !== STRUCTURE_WALL) return false;
+                    if (structure.structureType == STRUCTURE_RAMPART && 
+                        !rampartMem.includes(compress(structure.pos.x,structure.pos.y))) return false;
+                    if (structure.structureType == STRUCTURE_WALL &&
+                        !wallMem.includes(compress(structure.pos.x,structure.pos.y))) return false;
+                    return structure.hits < Math.min(100e6, structure.hitsMax);
+                }
             })
-        if (targets.length > 0) {
-            target = targets.reduce((structure, next) => structure.hits < next.hits - 1e5 ? structure : next, targets[0]) as StructureRampart | StructureWall;
-            creep.memory.cache.targetId = target.id;
         }
+
+        let target = ramwalls.reduce((a, b) => a.hits < b.hits ? a : b);
+        if (target) creep.memory.cache.targetId = target.id;
     }
 
-    if (target) {
-        creep.repairOrMoveTo(target);
-    }
+    if (target) creep.repairOrMoveTo(target);
 
     return;
 }
 
+const WithdrawLink = function (creep: Creep) {
+    let linktarget = Game.getObjectById(creep.memory.cache.linkId) || undefined;
+    if (!linktarget) {
+        const center = global.BotMem('rooms', creep.room.name)['center'];
+        const sources = creep.room.source || [];
+        const links = creep.room.link.filter(link => 
+            link.store[RESOURCE_ENERGY] > 0 &&
+            (!center || !link.pos.isNearTo(center.x, center.y)) &&
+            (!sources[0] || !link.pos.inRangeTo(sources[0], 2)) &&
+            (!sources[1] || !link.pos.inRangeTo(sources[1], 2)));
+        if (links.length > 0) {
+            linktarget = creep.pos.findClosestByRange(links);
+        }
+        if (linktarget) creep.memory.cache.linkId = linktarget.id;
+    }
+
+    if (linktarget) {
+        creep.withdrawOrMoveTo(linktarget);
+        return true;
+    }
+
+    return false;
+}
+
 const UnitRepair = {
     prepare: function (creep: Creep) {
-        return creep.boost(['XLH2O', 'LH2O', 'LH']);
+        return creep.goBoost(['XLH2O', 'LH2O', 'LH']);
     },
     target: function (creep: Creep) {   // 维修
         if(!creep.memory.ready) return false;
@@ -56,6 +94,7 @@ const UnitRepair = {
             RepairWork(creep);
             return true;
         } else {
+            if(WithdrawLink(creep)) return false;
             creep.withdrawEnergy();
             return false;
         }

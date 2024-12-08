@@ -22,8 +22,7 @@ const upgrade = function (creep: Creep) {
         if(creep.room.controller && (creep.room.controller.sign?.text ?? '') != sign) {
             if (creep.pos.inRangeTo(creep.room.controller, 1)) {
                 creep.signController(creep.room.controller, sign);
-            }
-            else {
+            } else {
                 creep.moveTo(creep.room.controller, { visualizePathStyle: { stroke: '#ffffff' } })
             }
         }
@@ -34,7 +33,7 @@ const upgrade = function (creep: Creep) {
 const Upgrader = {
     prepare: function (creep: Creep) {
         if(creep.room.level == 8) return true;
-        return creep.boost(['XGH2O', 'GH2O', 'GH']);
+        return creep.goBoost(['XGH2O', 'GH2O', 'GH']);
     },
 
     target: function (creep: Creep) {   // 升级控制器

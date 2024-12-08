@@ -3,7 +3,9 @@ const CarryEnergySource = {
     ruin: (creep) => findClosestUnclaimedResource(creep, FIND_RUINS),
     container: (creep) => {
         const containers = creep.room.container
-            .filter(c => c && (creep.room.storage ? c.store.getUsedCapacity() : c.store[RESOURCE_ENERGY]) > Math.min(1000, creep.store.getFreeCapacity()));
+            .filter((c: StructureContainer) => c && !c.pos.inRangeTo(creep.room.controller, 1) &&
+            (creep.room.storage ? c.store.getUsedCapacity() :
+                c.store[RESOURCE_ENERGY]) > Math.min(1000, creep.store.getFreeCapacity()));
         return creep.pos.findClosestByRange(containers);
     },
     Link: (creep) => {
@@ -15,9 +17,17 @@ const CarryEnergySource = {
     storageOrTerminal: (creep) => {
         const storage = creep.room.storage;
         const terminal = creep.room.terminal;
-        if (creep.room.CheckSpawnAndTower()) {
-            if (storage?.store.getUsedCapacity(RESOURCE_ENERGY) > 1000) return storage;
-            if (terminal?.store.getUsedCapacity(RESOURCE_ENERGY) > 1000) return terminal;
+        const cc = creep.room.container.find((c: StructureContainer) =>
+                    c.pos.inRangeTo(creep.room.controller, 1));
+        const cl = creep.room.link.find((l: StructureLink) =>
+                    l.pos.inRangeTo(creep.room.controller, 2));
+        if (creep.room.CheckSpawnAndTower() ||
+            (!cl && cc?.store.getFreeCapacity(RESOURCE_ENERGY) > 500)) {
+            if (storage?.store[RESOURCE_ENERGY] > 1000 &&
+                terminal?.store[RESOURCE_ENERGY] > 1000 &&
+                storage?.store[RESOURCE_ENERGY] < terminal?.store[RESOURCE_ENERGY]) return terminal;
+            if (storage?.store[RESOURCE_ENERGY] > 1000) return storage;
+            if (terminal?.store[RESOURCE_ENERGY] > 1000) return terminal;
         }
         if (storage && terminal && terminal.store[RESOURCE_ENERGY] > 10000 &&
             storage.store.getFreeCapacity() > 10000 &&
@@ -81,8 +91,11 @@ const checkAndFillNearbyExtensions = (creep) => {
     return false;
 };
 
-const harvest = (creep) => {
+const withdraw = (creep) => {
     const { pos, store, memory } = creep;
+
+    if (!creep.room.CheckSpawnAndTower() &&
+        !creep.room.storage && !creep.room.terminal) return false;
 
     // 收集掉落的资源
     const droppedResource = pos.findClosestByRange(FIND_DROPPED_RESOURCES, {
@@ -123,30 +136,44 @@ const harvest = (creep) => {
     }
 };
 
-const carry = (creep) => {
+const carry = (creep: any) => {
     const { memory, store, room, pos } = creep;
 
     let target = Game.getObjectById(memory.cache.targetId) as any;
-    if (!target || store[memory.cache.resourceType] === 0 ||
-        target.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
-        if (store.getUsedCapacity(RESOURCE_ENERGY) > 0 && room.CheckSpawnAndTower()) {
+
+    // 找目标
+    if (!target || !store[memory.cache.resourceType] || !target.store.getFreeCapacity(memory.cache.resourceType)) {
+        const controllerContainer = creep.room.container.find((c: StructureContainer) =>
+                                    c.pos.inRangeTo(creep.room.controller, 1));
+        const controllerLink = creep.room.link.find((l: StructureLink) =>
+                                    l.pos.inRangeTo(creep.room.controller, 2));
+        if (store[RESOURCE_ENERGY] > 0 && room.CheckSpawnAndTower()) {
             const spawnExtensions = (room.spawn?.concat(room.extension) ?? [])
-                                    .filter(extension => extension?.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+                        .filter((e: StructureExtension) => e?.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
             target = creep.pos.findClosestByRange(spawnExtensions) || 
                      creep.pos.findClosestByRange((room.tower || [])
-                        .filter(tower => tower?.store.getFreeCapacity(RESOURCE_ENERGY) > 100));
+                        .filter((t: StructureTower) => t?.store.getFreeCapacity(RESOURCE_ENERGY) > 100));
             if(!target){
                 const powerSpawn = room.powerSpawn || null;
                 if(powerSpawn && powerSpawn.store.getFreeCapacity(RESOURCE_ENERGY) > 100){
                     target = powerSpawn;
                 }
             }
-        } else {
-            target = room.storage || room.terminal;
+            if (target) {
+                memory.cache.targetId = target.id;
+                memory.cache.resourceType = RESOURCE_ENERGY;
+            }
         }
-        if (target) {
-            memory.cache.targetId = target.id;
+        else if (!controllerLink && controllerContainer && store[RESOURCE_ENERGY] > 0 && controllerContainer.store.getFreeCapacity() > 0) {
+            memory.cache.targetId = controllerContainer.id;
             memory.cache.resourceType = RESOURCE_ENERGY;
+        }
+        else {
+            target = [room.storage, room.terminal].find(s => s?.store.getFreeCapacity() > 0);
+            if (target) {
+                memory.cache.targetId = target.id;
+                memory.cache.resourceType = Object.keys(store)[0];
+            }
         }
     }
 
@@ -164,13 +191,13 @@ const carry = (creep) => {
 };
 
 const CarrierFunction = {
-    source: (creep) => {
+    source: (creep: any) => {
         if (!creep.moveHomeRoom()) return;
         if (checkAndFillNearbyExtensions(creep)) return;
-        harvest(creep);
+        withdraw(creep);
         return creep.store.getFreeCapacity() === 0;
     },
-    target: (creep) => {
+    target: (creep: any) => {
         if (!creep.moveHomeRoom()) return;
         if (checkAndFillNearbyExtensions(creep)) return;
         carry(creep);

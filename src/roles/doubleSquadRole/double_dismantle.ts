@@ -1,16 +1,3 @@
-const getheal = function (creep: Creep) {
-    if(Game.time % 10 !== 0) return;
-    const healCreeps = creep.room.find(FIND_MY_CREEPS, {
-        filter: (c) => c.memory.role === 'double-heal' &&
-                c.memory.squad === 'dismantle' && !c.memory.bind
-    });
-    if(healCreeps.length < 1) return;
-    const healcreep = healCreeps[0];
-    // 双向绑定
-    creep.memory.bind = healcreep.id;
-    healcreep.memory.bind = creep.id;
-}
-
 const double_dismantle_action = {
     move: function (creep: Creep) {
         const name = creep.name.match(/#(\w+)/)?.[1] ?? creep.name;
@@ -19,41 +6,10 @@ const double_dismantle_action = {
             if(creep.room.name !== moveflag.pos.roomName) {
                 creep.memory.targetRoom = moveflag.pos.roomName;
             }
-            creep.double_move(moveflag.pos, '#ffff00')
+            creep.doubleMove(moveflag.pos, '#ffff00')
         }
         if (moveflag) return true;
         return false
-    },
-    moveToRoom: function (creep: Creep, bindcreep: Creep) {
-        let moveOK = false;
-        // 移动到目标房间
-        if(creep.memory.targetRoom && creep.room.name !== creep.memory.targetRoom) {
-            creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ffff00');
-            moveOK = true;
-        }
-        // 躲边界
-        else if(creep.pos.isRoomEdge()) {
-            creep.double_move(new RoomPosition(25, 25, creep.memory.targetRoom), '#ffff00');
-            moveOK = true;
-        }
-        // 躲边界
-        else if(creep.room.name == bindcreep.room.name && bindcreep.pos.isRoomEdge()) {
-            bindcreep.moveTo(new RoomPosition(25, 25, creep.room.name), {
-                maxRooms: 1,
-                ignoreCreeps: false,
-            })
-            moveOK = true;
-        }
-        
-        // 如果房间不同，让heal过来
-        if(creep.room.name != bindcreep.room.name) {
-            bindcreep.moveTo(creep.pos)
-        }
-
-        // 未到达房间不继续行动
-        if(creep.memory.targetRoom && creep.room.name !== creep.memory.targetRoom) return true;
-
-        return moveOK
     },
     dismantle: function (creep: Creep) {
         if(creep.room.controller?.my) return false;
@@ -66,7 +22,7 @@ const double_dismantle_action = {
                 const targetStructure = Structures.find((s) => s.structureType === STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART) ||
                                         Structures[0];
                 if(creep.pos.isNearTo(targetStructure)) creep.dismantle(targetStructure);
-                else creep.double_move(targetStructure, '#ffff00');
+                else creep.doubleMove(targetStructure, '#ffff00');
                 return true;
             }
         }
@@ -82,14 +38,12 @@ const double_dismantle = function (creep: Creep) {
     }
     if(!creep.memory.boosted) {
         const boosts = ['XGHO2', 'GHO2', 'GO', 'XZH2O', 'ZH2O', 'ZH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boost(boosts);
+        creep.memory.boosted = creep.goBoost(boosts);
         return
     }
 
-    if(!creep.memory.bind) {
-        getheal(creep)
-        return;
-    }
+    // 等待绑定
+    if(!creep.memory.bind) return;
 
     // 获取绑定的另一个creep
     const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
@@ -99,11 +53,12 @@ const double_dismantle = function (creep: Creep) {
         return;
     }
 
-    if(double_dismantle_action.move(creep)) return;
+    if (double_dismantle_action.move(creep)) return;
 
-    if(double_dismantle_action.moveToRoom(creep, bindcreep)) return;
+    // 移动到目标房间.未到达房间不继续行动
+    if (creep.doubleMoveToRoom(creep.memory.targetRoom, '#ff0000')) return;
 
-    if(double_dismantle_action.dismantle(creep)) return;
+    if (double_dismantle_action.dismantle(creep)) return;
 }
 
 export default double_dismantle;

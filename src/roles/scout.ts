@@ -7,7 +7,7 @@ const Scout = {
 
         const controller = creep.room.controller;
         if (!controller) return false;
-        if (creep.memory['sign'] && creep.memory['sign'] !== controller.sign?.text) {
+        if (creep.memory['sign'] != undefined && creep.memory['sign'] !== controller.sign?.text) {
             if (creep.pos.isNearTo(controller)) {
                 creep.signController(creep.room.controller, creep.memory['sign']);
             } else {

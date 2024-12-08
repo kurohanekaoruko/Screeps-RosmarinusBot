@@ -203,7 +203,7 @@ export default {
                 console.log(`已关闭房间 ${roomName} 自动交易：${type}，${orderType}`);
                 return OK;
             },
-            buy(roomName: any, type: any, amount: any, store?: string) {
+            buy(roomName: any, type: any, amount: any) {
                 const BOT_NAME = global.BOT_NAME;
                 if(!Memory[BOT_NAME]['autoMarket'][roomName]) {
                     Memory[BOT_NAME]['autoMarket'][roomName] = [];
@@ -212,13 +212,10 @@ export default {
                 const autoOrder = autoMarket.find((item: any) => item.type === type && item.orderType === 'buy');
                 if(!autoOrder) {
                     const item = {type, amount, orderType: 'buy'};
-                    if(store) item['store'] = store;
                     autoMarket.push(item);
                     console.log(`已在房间 ${roomName} 开启自动求购${type}，购买阈值${amount}`);
                 } else {
                     autoOrder['amount'] = amount;
-                    if(store) autoOrder['store'] = store;
-                    else delete autoOrder['store'];
                     console.log(`房间 ${roomName} 已存在自动求购${type}，已修改为:${JSON.stringify(autoOrder)}`);
                 }
                 return OK;

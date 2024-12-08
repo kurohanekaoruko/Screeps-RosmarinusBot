@@ -64,7 +64,7 @@ const RepairWorkFunc = function (creep: Creep) {
 
 const UnitRepair = {
     prepare: function (creep: Creep) {
-        return creep.boost(['XLH2O', 'LH2O', 'LH']);
+        return creep.goBoost(['XLH2O', 'LH2O', 'LH']);
     },
     target: function (creep: Creep) {   // 维修
         if(!creep.memory.ready) return false;

@@ -28,7 +28,7 @@ export default class MissionSubmit extends Room {
         if (!global.SpawnMissionNum) global.SpawnMissionNum = {};
         if (!global.SpawnMissionNum[this.name]) global.SpawnMissionNum[this.name] = {};
         if (!global.SpawnMissionNum[this.name][role]) global.SpawnMissionNum[this.name][role] = 0;
-        global.SpawnMissionNum[this.name][role]--;
+        global.SpawnMissionNum[this.name][role] = global.SpawnMissionNum[this.name][role] - 1;
         if (global.SpawnMissionNum[this.name][role] < 0) global.SpawnMissionNum[this.name][role] = 0;
         return OK;
     }

@@ -11,7 +11,7 @@ const harvest = function (creep) {
     }
 
     const ruinedEnergy = creep.pos.findClosestByRange(FIND_RUINS, {
-        filter: (ruin) => ruin.store[RESOURCE_ENERGY] > 0
+        filter: (ruin) => ruin.store[RESOURCE_ENERGY] > 50
     });
 
     if (ruinedEnergy) {
@@ -22,12 +22,14 @@ const harvest = function (creep) {
     }
 
     const container = creep.pos.findClosestByRange(FIND_STRUCTURES, {
-        filter: (structure) => structure.structureType === STRUCTURE_CONTAINER && structure.store[RESOURCE_ENERGY] > 0
+        filter: (structure) => structure.structureType === STRUCTURE_CONTAINER &&
+                                structure.store[RESOURCE_ENERGY] > 50
     })
     if (container) {
         if (creep.withdraw(container, RESOURCE_ENERGY) === ERR_NOT_IN_RANGE) {
             creep.moveTo(container, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
+        return;
     }
 
     // 检查spawn和tower是否需要补充能量
@@ -56,7 +58,7 @@ const harvest = function (creep) {
     }
     else {
         const targetSource = Game.getObjectById(creep.memory.targetSourceId);
-        if (targetSource) {
+        if (targetSource && targetSource.energy > 0) {
             if (creep.harvest(targetSource) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(targetSource, { visualizePathStyle: { stroke: '#ffaa00' } });
             }

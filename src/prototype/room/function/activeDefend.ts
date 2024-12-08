@@ -1,7 +1,8 @@
 export default class ActiveDefend extends Room {
     activeDefend() {
         // 关于主动防御的检查
-        if (Game.time % 20) return;
+        if (Game.time % 5) return;
+        if (this.level < 7) return;
         if (!Memory['whitelist']) Memory['whitelist'] = [];
         let hostiles = this.find(FIND_HOSTILE_CREEPS, {
             filter: hostile => 
@@ -10,12 +11,16 @@ export default class ActiveDefend extends Room {
                 hostile.owner.username != 'Invader' &&
                 (hostile.getActiveBodyparts(ATTACK) > 0 || 
                 hostile.getActiveBodyparts(RANGED_ATTACK) > 0 ||
-                hostile.getActiveBodyparts(HEAL) > 0 ||
-                hostile.getActiveBodyparts(WORK) > 0)
-        });
+                hostile.getActiveBodyparts(HEAL) > 0)
+        }) as any;
+        let power_hostiles = this.find(FIND_HOSTILE_POWER_CREEPS,{
+            filter: hostile => !Memory['whitelist'].includes(hostile.owner.username)
+        }) as any;
+        hostiles = hostiles.concat(power_hostiles);
+
         if (hostiles.length > 0) {
             if(!global.Hostiles) global.Hostiles = {};
-            global.Hostiles[this.name] = hostiles.map(hostile => hostile.id);
+            global.Hostiles[this.name] = hostiles.map((hostile: Creep) => hostile.id);
             this.memory.defend = true;    // 进入防御模式
             const doubleDefender = Object.values(Game.creeps)
                     .filter((creep) => creep.memory.role == 'defend-2Attack' && creep.memory.targetRoom == this.name);

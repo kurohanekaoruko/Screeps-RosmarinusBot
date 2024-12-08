@@ -9,7 +9,7 @@ const one_ranged = function (creep: Creep) {
     if (!creep.memory.boosted) {
         const boost = ['XGHO2', 'GHO2', 'GO','XLHO2', 'LHO2', 'LO',
                         'XKHO2', 'KHO2', 'KO','XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.boost(boost);
+        creep.memory.boosted = creep.goBoost(boost);
         return
     }
 

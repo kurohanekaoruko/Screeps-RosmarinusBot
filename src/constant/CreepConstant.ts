@@ -1,5 +1,6 @@
 import { harvester, carrier, transport, manage, upgrader, builder, repair, miner} from '@/roles'
-import { harvest_carry, SpeedUpgrader, SpeedRepair, logistics, claimer, lclaimer, dismantle, aclaimer } from '@/roles'
+import { claimer, lclaimer, aclaimer } from '@/roles';
+import { harvest_carry, SpeedUpgrader, SpeedRepair, logistic, dismantle, bigCarry } from '@/roles'
 import { scout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack } from '@/roles';
 import { power_attack, power_heal, power_carry, power_defend } from '@/roles';
 import { deposit_harvest, deposit_transfer } from '@/roles';
@@ -38,11 +39,14 @@ export const RoleData: RoleConfig = {
     'miner': { num: 0, ability: [1, 1, 2, 0, 0, 0, 0, 0], adaption: true, level: 6, code: 'MR', work: miner }, // 矿工
 
     /* 特殊用途 */
+    'scout': { num: 0, ability: [0, 0, 1, 0, 0, 0, 0, 0], level: 11, code: 'S', work: scout },
     'har-car': { num: 0, ability: [1, 1, 2, 0, 0, 0, 0, 0], level: 0, code: 'HC', work: harvest_carry }, // 采集搬运一体机，处理停摆状况，以及房间早期没有container时孵化
     'speedup-upgrad': { num: 0, ability: [2, 1, 1, 0, 0, 0, 0, 0], adaption: true, level: 11, code: 'SU', work: SpeedUpgrader }, // 加速升级
-    'speedup-repair': { num: 0, ability: [25, 5, 15, 0, 0, 0, 0, 0], level: 11, code: 'SR', work: SpeedRepair }, // 加速刷墙
-    'logistics': { num: 0, ability: [0, 2, 2, 0, 0, 0, 0, 0], adaption: true, level: 10, code: 'L', work: logistics }, // 长途运输
+    'speedup-repair': { num: 0, ability: [30, 5, 15, 0, 0, 0, 0, 0], level: 11, code: 'SR', work: SpeedRepair }, // 加速刷墙
+    'logistic': { num: 0, ability: [0, 2, 2, 0, 0, 0, 0, 0], adaption: true, level: 10, code: 'L', work: logistic }, // 长途运输
     'dismantle': { num: 0, ability: [40, 0, 10, 0, 0, 0, 0, 0], level: 10, code: 'D', action: dismantle},  // 拆墙
+    'big-carry': { num: 0, ability: [0, 40, 10, 0, 0, 0, 0, 0], level: 10, code: 'BC', work: bigCarry },  // 能量搬运
+
 
     /* 占领房间 */
     'claimer': { num: 0, ability: [0, 0, 4, 0, 0, 0, 4, 0], level: 11, code: 'CL', adaption: true, work: claimer },
@@ -53,7 +57,7 @@ export const RoleData: RoleConfig = {
     /* 二人队 */
     'double-attack': { num: 0, ability: [0, 0, 10, 28, 0, 0, 0, 12], level: 10, code: '2A', action: double_attack},
     'double-dismantle': { num: 0, ability: [28, 0, 10, 0, 0, 0, 0, 12], level: 10, code: '2D', action: double_dismantle},
-    'double-heal': { num: 0, ability: [0, 0, 10, 0, 2, 28, 0, 10], level: 10, code: '2H', action: double_heal},
+    'double-heal': { num: 0, ability: [0, 0, 10, 0, 1, 27, 0, 12], level: 10, code: '2H', action: double_heal},
 
     /* 一体机 */
     'one-tough': { num: 0, ability: [0, 0, 20, 0, 0, 14, 0, 6], level: 10, code: '1T', action: one_tough},
@@ -107,8 +111,8 @@ export const RoleLevelData = {
         1: { bodypart: [0, 2, 2, 0, 0, 0, 0, 0], num: 2 },
         2: { bodypart: [0, 3, 3, 0, 0, 0, 0, 0], num: 2 },
         3: { bodypart: [0, 6, 6, 0, 0, 0, 0, 0], num: 2 },
-        4: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 2 },
-        5: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 2 },
+        4: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 1 },
+        5: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 1 },
         6: { bodypart: [0, 15, 15, 0, 0, 0, 0, 0], num: 1 },
         7: { bodypart: [0, 20, 20, 0, 0, 0, 0, 0], num: 0 },
         8: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 0 },
@@ -119,9 +123,9 @@ export const RoleLevelData = {
         3: { bodypart: [0, 2, 2, 0, 0, 0, 0, 0], num: 0 },
         4: { bodypart: [0, 5, 5, 0, 0, 0, 0, 0], num: 1 },
         5: { bodypart: [0, 10, 10, 0, 0, 0, 0, 0], num: 1 },
-        6: { bodypart: [0, 15, 15, 0, 0, 0, 0, 0], num: 1 },
+        6: { bodypart: [0, 15, 15, 0, 0, 0, 0, 0], num: 2 },
         7: { bodypart: [0, 24, 12, 0, 0, 0, 0, 0], num: 2 },
-        8: { bodypart: [0, 30, 15, 0, 0, 0, 0, 0], num: 2 },
+        8: { bodypart: [0, 32, 16, 0, 0, 0, 0, 0], num: 1 },
     },
     'manage': {
         1: { bodypart: [0, 1, 1, 0, 0, 0, 0, 0], num: 0 },
@@ -131,7 +135,7 @@ export const RoleLevelData = {
         5: { bodypart: [0, 10, 5, 0, 0, 0, 0, 0], num: 1 },
         6: { bodypart: [0, 20, 5, 0, 0, 0, 0, 0], num: 1 },
         7: { bodypart: [0, 25, 5, 0, 0, 0, 0, 0], num: 1 },
-        8: { bodypart: [0, 30, 5, 0, 0, 0, 0, 0], num: 1 },
+        8: { bodypart: [0, 40, 5, 0, 0, 0, 0, 0], num: 1 },
     },
     'upgrader': {
         1: { bodypart: [1, 1, 2, 0, 0, 0, 0, 0], num: 3 },
@@ -171,10 +175,10 @@ export const RoleLevelData = {
         4: { bodypart: [6, 1, 3, 0, 0, 0, 0, 0], num: 0 },
         5: { bodypart: [7, 2, 4, 0, 0, 0, 0, 0], num: 0 },
         6: { bodypart: [10, 2, 3, 0, 0, 0, 0, 0], num: 0 },
-        7: { bodypart: [10, 2, 3, 0, 0, 0, 0, 0], num: 0 },
-        8: { bodypart: [10, 2, 5, 0, 0, 0, 0, 0], num: 0, upbodypart: [20, 4, 10, 0, 0, 0, 0, 0] },
+        7: { bodypart: [15, 2, 5, 0, 0, 0, 0, 0], num: 0 },
+        8: { bodypart: [30, 2, 5, 0, 0, 0, 0, 0], num: 0 },
     },
-    'logistics': {
+    'logistic': {
         1: { bodypart: [0, 1, 1, 0, 0, 0, 0, 0], num: 0 },
         2: { bodypart: [0, 2, 2, 0, 0, 0, 0, 0], num: 0 },
         3: { bodypart: [0, 3, 3, 0, 0, 0, 0, 0], num: 0 },
@@ -282,7 +286,7 @@ export const RoleLevelData = {
         5: { bodypart: [10, 5, 5, 0, 0, 0, 0, 0], num: 0 },
         6: { bodypart: [16, 2, 10, 0, 0, 0, 0, 0], num: 0 },
         7: { bodypart: [35, 5, 10, 0, 0, 0, 0, 0], num: 0 },
-        8: { bodypart: [0, 0, 0, 0, 0, 0, 0, 0], num: 0 }
+        8: { bodypart: [30, 5, 15, 0, 0, 0, 0, 0], num: 0 }
     },
 }
 

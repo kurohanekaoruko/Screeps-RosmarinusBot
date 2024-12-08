@@ -45,5 +45,11 @@ export default {
             }
             return OK;
         },
+        setpc(pcname: string, roomName: string) {
+            const pcMem = global.BotMem('powerCreep');
+            pcMem[pcname] = roomName;
+            console.log(`已设置 PowerCreep 【${pcname}】 的孵化房间为 ${roomName}`);
+            return OK;
+        }
     }
 }

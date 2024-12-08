@@ -11,7 +11,7 @@ export default {
                 memory.homeRoom = roomName;
             }
             for (let i = 0; i < num; i++) {
-                room.SpawnMissionAdd('', [], -1, role, memory);
+                room.SpawnMissionAdd('', [], -1, role, _.cloneDeep(memory));
             }
             console.log(`[${roomName}] 即将孵化 ${role}, 数量: ${num} \n memory: ${JSON.stringify(memory)}`);
             return 0;

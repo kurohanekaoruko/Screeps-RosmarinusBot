@@ -11,9 +11,10 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
             if(lv == 8 && room.controller.ticksToDowngrade >= 150000) return false;
             return currentNum < num;
         case 'transport':
-            return currentNum < num && room.storage;
+            if (room.AllEnergy() < 1000) return false;
+            return currentNum < num && (room.storage || room.terminal);
         case 'manage':
-            return currentNum < num && room.storage && room.link.find(l => l.pos.inRangeTo(room.storage, 2));
+            return currentNum < num && room.storage && room.terminal;
         case 'carrier':
             if (num === 0) {
                 return currentNum < 1 && (room.mineral?.mineralAmount > 0 ||
@@ -32,7 +33,7 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
                     room.extractor &&
                     room.mineral.mineralAmount > 0;
         case 'har-car':
-            return currentNum < 1 && lv < 3 && (!room.container || room.container.length < 1);
+            return currentNum < 2 && lv < 3 && (!room.container || room.container.length < 1);
         case 'speedup-upgrad':
             const spup = global.BotMem('rooms', room.name, 'spup');
             if (!spup) return false;
@@ -41,7 +42,7 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
                 console.log(`${room.name} 已到达八级，自动关闭冲级。`);
                 return false;
             }
-            if (room.storage?.store[RESOURCE_ENERGY] < 10000) return false;
+            if (room.AllEnergy() < 10000) return false;
             return (currentNum < spup);
         case 'speedup-repair':
             const spre = global.BotMem('rooms', room.name, 'spre');

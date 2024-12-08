@@ -100,7 +100,7 @@ export const errorMapper = function (next: any, ...args: any) {
             
             console.log(`<text style="color:#ef9a9a">${errorMessage}</text>`)
         }
-        // 处理不了，直接抛出
-        else throw e
+        // 抛出原报错
+        throw e
     }
 }

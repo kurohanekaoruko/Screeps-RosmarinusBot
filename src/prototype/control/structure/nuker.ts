@@ -2,7 +2,7 @@ export default {
     nuker: {
         launch(...rooms: string[]) {
             for (const flagName of Object.keys(Game.flags)) {
-                const launchNukeMatch = flagName.match(/^launchNuke[-#/ ](\d+)(?:[-#/ ].*)?$/);
+                const launchNukeMatch = flagName.match(/^launchNuke[-#/ ](\d+)$/);
                 if (!launchNukeMatch) continue;
                 // 获取目标
                 const targetPos = Game.flags[flagName].pos
@@ -31,8 +31,9 @@ export default {
                     console.log(`从房间 ${nuker.room.name} 发射核弹到 ${targetRoom} (x:${targetPos.x}  y:${targetPos.y})`);
                     if (launchedCount >= amount) break; // 达到发射数量后退出循环
                 }
+                return OK;
             }
-            return OK;
+            return Error(`没有发射成功`);
         }
     }
 }

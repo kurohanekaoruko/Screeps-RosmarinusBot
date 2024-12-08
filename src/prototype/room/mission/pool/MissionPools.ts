@@ -226,14 +226,17 @@ export default class MissionPools extends Room {
 
     // 用id删除任务池中的任务
     public deleteMissionFromPool(type: Task["type"], id: Task["id"]) {
-        const tasks = this.getPool(type);
+        const memory = Memory.MissionPools[this.name];
+        if (!memory) { return; }
+        const tasks = memory[type];
         if (!tasks) { return; }
         if (!tasks.length) return; // 如果没有任务，不处理
 
-        const index = tasks.findIndex(t => t.id === id);
+        const index = tasks.findIndex(t => t.id == id);
         if (index === -1) {return;}
 
-        this.removeTaskFromPool(type, index);
+        Memory.MissionPools[this.name][type].splice(index, 1);
+
         return OK
     }
 

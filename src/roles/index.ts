@@ -9,7 +9,7 @@ import builder from './mainRole/builder';
 import repair from './mainRole/repair';
 import miner from './mainRole/miner';
 
-import logistics from './logistics';
+import logistic from './logistic';
 import harvest_carry from './harvest_carry';
 import SpeedUpgrader from './spup';
 import SpeedRepair from './spre'
@@ -17,6 +17,7 @@ import claimer from './claimRole/claimer';
 import lclaimer from './claimRole/lclaimer';
 import aclaimer from './claimRole/aclaimer';
 import dismantle from './dismantle';
+import bigCarry from './bigCarry';
 
 import double_attack from './doubleSquadRole/double_attack';
 import double_dismantle from './doubleSquadRole/double_dismantle';
@@ -47,7 +48,8 @@ import one_ranged from './oneBody/one_ranged';
 
 
 export {harvester, carrier, transport, manage, upgrader, builder, repair, miner}
-export {logistics, harvest_carry, SpeedUpgrader, SpeedRepair, claimer, lclaimer, dismantle, aclaimer};
+export {claimer, lclaimer, aclaimer};
+export {logistic, harvest_carry, SpeedUpgrader, SpeedRepair, dismantle, bigCarry};
 export {one_tough, one_ranged};
 export {double_attack, double_dismantle, double_heal, double_defender};
 export {scout, outHarvest, outCarry, outBuild, outClaim, outDefend, outInvader, outAttack};
