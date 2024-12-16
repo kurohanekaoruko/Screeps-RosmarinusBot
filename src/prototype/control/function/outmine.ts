@@ -3,7 +3,7 @@ export default {
     outmine: {
         add(roomName: string, targetRoom: string) {
             if (!roomName || !targetRoom) return -1;
-            const BotMem = global.BotMem('outmine');
+            const BotMem = Memory['OutMineData'];
             if (!BotMem[roomName]) BotMem[roomName] = {};
             const Mem = BotMem[roomName];
             const isCenterRoom = /^[EW]\d*[456][NS]\d*[456]$/.test(targetRoom); // 中间房间
@@ -34,9 +34,9 @@ export default {
             }
             // 中间房间
             else {
-                if (!Mem['center']) Mem['center'] = [];
-                if (Mem['center'].indexOf(targetRoom) === -1) {
-                    Mem['center'].push(targetRoom);
+                if (!Mem['centerRoom']) Mem['centerRoom'] = [];
+                if (Mem['centerRoom'].indexOf(targetRoom) === -1) {
+                    Mem['centerRoom'].push(targetRoom);
                     console.log(`中间房间 ${targetRoom} 已添加到 ${roomName} 的采矿列表`);
                     return OK;
                 } else {
@@ -48,7 +48,7 @@ export default {
         // 删除外矿
         remove(roomName: string, targetRoom: string) {
             if (!roomName || !targetRoom) return -1;
-            const BotMem = global.BotMem('outmine');
+            const BotMem = Memory['OutMineData'];
             if (!BotMem[roomName]) return ERR_NOT_FOUND;
             const Mem = BotMem[roomName];
             const isCenterRoom = /^[EW]\d*[456][NS]\d*[456]$/.test(targetRoom); // 中间房间
@@ -76,23 +76,23 @@ export default {
             }
             // 中间房间
             else {
-                if (!Mem['center']) return ERR_NOT_FOUND;
-                if (Mem['center'].indexOf(targetRoom) === -1) return ERR_NOT_FOUND;
+                if (!Mem['centerRoom']) return ERR_NOT_FOUND;
+                if (Mem['centerRoom'].indexOf(targetRoom) === -1) return ERR_NOT_FOUND;
                 else {
-                    Mem['center'].splice(Mem['center'].indexOf(targetRoom), 1);
+                    Mem['centerRoom'].splice(Mem['centerRoom'].indexOf(targetRoom), 1);
                     console.log(`中间房间 ${targetRoom} 从 ${roomName} 的外矿列表中删除。`);
                     return OK;
                 }
             }
         },
         // 获取外矿列表
-        get(roomName: string) {
+        list(roomName: string) {
             if (!roomName) return -1;
-            const BotMem = global.BotMem('outmine');
+            const BotMem = Memory['OutMineData'];
             if (!BotMem[roomName]) return ERR_NOT_FOUND;
             return `energy: ${BotMem[roomName]['energy'] || []}\n` +
                    `highway: ${BotMem[roomName]['highway'] || []}\n` +
-                   `center: ${BotMem[roomName]['center'] || []}`;
+                   `centerRoom: ${BotMem[roomName]['centerRoom'] || []}`;
         },
         // 清空外矿road缓存
         clearRoad(roomName: string) {
@@ -100,29 +100,38 @@ export default {
             console.log(`房间 ${roomName} 的外矿road缓存已清空。`);
             return OK;
         },
-        setpower(roomName: string) {
-            const BotMem = global.BotMem('rooms', roomName);
-            BotMem['outminePower'] = !BotMem['outminePower'];
-            console.log(`房间 ${roomName} 的自动采集Power已设置为 ${BotMem['outminePower']}。`);
-            return OK;
-        },
-        setdeposit(roomName: string) {
-            const BotMem = global.BotMem('rooms', roomName);
-            BotMem['outmineDeposit'] = !BotMem['outmineDeposit'];
-            console.log(`房间 ${roomName} 的自动采集Deposit已设置为 ${BotMem['outmineDeposit']}。`);
+        auto(roomName: string, type: 'power' | 'deposit') {
+            const BotMem = Memory['RoomControlData'][roomName];
+            if (type === 'power') {
+                BotMem['outminePower'] = !BotMem['outminePower'];
+                console.log(`房间 ${roomName} 的自动采集Power已设置为 ${BotMem['outminePower']}。`);
+            } else if (type === 'deposit') {
+                BotMem['outmineDeposit'] = !BotMem['outmineDeposit'];
+                console.log(`房间 ${roomName} 的自动采集Deposit已设置为 ${BotMem['outmineDeposit']}。`);
+            }
             return OK;
         },
         // 立即开始到指定房间开采power
-        power(roomName: string, targetRoom: string, num: number, boostLevel?: number) {
+        power(roomName: string, targetRoom: string, num: number, prCountMax?: number, boostLevel?: number) {
             if (!roomName || !targetRoom || !num) return -1;
             const room = Game.rooms[roomName];
             if (!room) return;
             if (!room.memory['powerMine']) room.memory['powerMine'] = {};
+            if (boostLevel == 1) {
+                const stores = [this.storage, this.terminal, ...this.lab]
+                const GO_Amount = stores.reduce((a, b) => a + b.store['GO'], 0);
+                const UH_Amount = stores.reduce((a, b) => a + b.store['UH'], 0);
+                const LO_Amount = stores.reduce((a, b) => a + b.store['LO'], 0);
+                if (GO_Amount < 3000 || UH_Amount < 3000 || LO_Amount < 3000) {
+                    console.log(`房间 ${roomName} 的仓库中GO/UH/LO数量不足，无法孵化T1 power开采队。`);
+                    return -1;
+                }
+            } else if (boostLevel > 1) return -1;
             room.memory['powerMine'][targetRoom] = {
-                creep: num,      // creep队伍数
-                max: num,            // 最大孵化数量
-                count: 0,          // 已孵化数量
+                creep: num,                      // creep队伍数
+                max: num,                        // 最大孵化数量
                 boostLevel: boostLevel || 0,     // 强化等级
+                prCountMax: prCountMax || 0,     // ranged孵化上限
             };
             console.log(`房间 ${roomName} 即将向 ${targetRoom} 派出 ${num} 数量的Power开采队。`);
             return OK;

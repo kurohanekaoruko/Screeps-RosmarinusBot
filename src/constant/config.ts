@@ -8,8 +8,6 @@ export const BaseConfig = {
     BOT_NAME: 'Rosmarinus',
     // 长名资源缩写
     RESOURCE_ABBREVIATIONS,
-    // 运行代码的shard
-    shards: ['sim', 'shard3']
-
+    
 }
 

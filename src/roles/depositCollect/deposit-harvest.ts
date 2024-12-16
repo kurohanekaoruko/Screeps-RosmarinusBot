@@ -8,12 +8,10 @@ const deposit_harvest = {
         }
 
         if (!creep.memory['targetDeposit']) {
-            // 搜索冷却
-            if(creep.memory['findCooldown'] && Game.time % 10) return;
             // 初始化最少Creep绑定计数
             let minCreepCount = Infinity;
             let leastCrowdedDeposit = [];
-            let deposits = creep.room.deposit || creep.room.find(FIND_DEPOSITS);
+            let deposits = creep.room.find(FIND_DEPOSITS);
             // 筛选
             let activeDeposits = deposits.filter(d => d.lastCooldown <= 120);
             if (activeDeposits.length > 0) {
@@ -30,7 +28,19 @@ const deposit_harvest = {
                         c.ticksToLive > 150
                 }).length;
                 // 最大站位数
-                let maxPosCount = creep.room.memory['depositMine'][d.id] || 0;
+                if (!creep.room.memory) creep.room.memory = {} as any;
+                if (!creep.room.memory['depositMine']) creep.room.memory['depositMine'] = {};
+                let maxPosCount = creep.room.memory['depositMine'][d.id];
+                if (!maxPosCount) {
+                    const terrain = new Room.Terrain(creep.room.name);
+                    [[d.pos.x-1, d.pos.y-1], [d.pos.x, d.pos.y-1], [d.pos.x+1, d.pos.y-1],
+                     [d.pos.x-1, d.pos.y], [d.pos.x+1, d.pos.y],
+                     [d.pos.x-1, d.pos.y+1], [d.pos.x, d.pos.y+1], [d.pos.x+1, d.pos.y+1],
+                    ].forEach((p) => {
+                        if (terrain.get(p[0], p[1]) != TERRAIN_MASK_WALL) maxPosCount++;
+                    })
+                    creep.room.memory['depositMine'][d.id] = maxPosCount;
+                }
                 // 绑定满的忽略
                 if (creepCount >= maxPosCount) return;
                 // 记录绑定数最小的采集点
@@ -48,7 +58,6 @@ const deposit_harvest = {
             } else if (leastCrowdedDeposit.length > 1) {
                 closestDeposit = creep.pos.findClosestByRange(leastCrowdedDeposit);
             } else {    // 没有可采集的Deposit
-                creep.memory['findCooldown'] = true;
                 return; 
             }
             creep.memory['targetDeposit'] = closestDeposit.id;

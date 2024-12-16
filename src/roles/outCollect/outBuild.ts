@@ -5,6 +5,18 @@ const outBuild = {
             return;
         }
 
+        const npcs = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1, {
+            filter: (c) => c.owner.username === 'Source Keeper'
+        });
+        const avoidArray = [];
+        for (const npc of npcs) {
+            for(let i = -3; i <= 3; i++) {
+                for(let j = -3; j <= 3; j++) {
+                    avoidArray.push(new RoomPosition(npc.pos.x + i, npc.pos.y + j, npc.pos.roomName));
+                }
+            }
+        }
+
         if (creep.memory.cache.harvestTarget) {
             let target = Game.getObjectById(creep.memory.cache.harvestTarget) as any;
             if (target) {
@@ -16,7 +28,7 @@ const outBuild = {
                     }
                     creep.memory.cache.harvestTarget = null;
                 } else {
-                    creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
+                    creep.moveTo(target, { avoid: avoidArray, visualizePathStyle: { stroke: '#ffaa00' } });
                 }
                 return;
             }

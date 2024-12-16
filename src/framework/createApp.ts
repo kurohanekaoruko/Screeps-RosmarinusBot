@@ -6,7 +6,6 @@ import { BaseConfig } from '@/constant/config.js'
  */
 export const createApp = () => {
     const name = BaseConfig.BOT_NAME;
-    const shards = BaseConfig.shards;
     const events = {init: [], tickStart: [], tick: [], tickEnd: []}
     
     let runRoom = () => {};
@@ -39,8 +38,8 @@ export const createApp = () => {
         })
     };
 
+    let initOK = false;
     const init = () => {
-        if (!shards.includes(Game.shard.name)) return;
         events.init.forEach(callback => errorMapper(callback))
         const initEntities = (entity: any) => {
             Object.values(entity).forEach((item: any) => item.init()); 
@@ -48,10 +47,13 @@ export const createApp = () => {
         if (Room.prototype.init) initEntities(Game.rooms);
         if (Creep.prototype.init) initEntities(Game.creeps);
         if (PowerCreep.prototype.init) initEntities(Game.powerCreeps);
-        if (Game.shard.name != 'sim') console.log(`全局初始化完成。`)
+        if (Game.shard.name != 'sim') console.log(`全局初始化完成。`);
+        initOK = true;
     };
 
-    const tickStart = () => events.tickStart.forEach(callback => errorMapper(callback));
+    const tickStart = () => {
+        events.tickStart.forEach(callback => errorMapper(callback));
+    }
 
     const tick = () => {
         runRoom();
@@ -60,13 +62,28 @@ export const createApp = () => {
         events.tick.forEach(callback => errorMapper(callback));
     };
 
-    const tickEnd = () => events.tickEnd.forEach(callback => errorMapper(callback));
+    const tickEnd = () => {
+        events.tickEnd.forEach(callback => errorMapper(callback));
+    }
+
+    let _cachedMemory: Memory;
 
     const run = () => {
-        if (!shards.includes(Game.shard.name)) return;
+        if (_cachedMemory) {
+            // @ts-ignore
+            delete global.Memory;
+            // @ts-ignore
+            global.Memory = _cachedMemory;
+        } else {
+            // @ts-ignore
+            _cachedMemory = global.Memory;
+        }
+        if(!initOK) init();
         tickStart();
         tick();
         tickEnd();
+        // @ts-ignore
+        RawMemory._parsed = global.Memory;
     };
 
     return { name, set, mount, on, init, run }

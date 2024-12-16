@@ -56,7 +56,7 @@ interface Room {
     // 获取发送任务的总发送数量
     getSendMissionTotalAmount(): {[type: string]: number};
     // 获取孵化任务
-    getSpawnMission(): Task;
+    getSpawnMission(spawnEnergy?: number): Task | null;
     // 获取孵化任务的数量
     getSpawnMissionAmount(): {[type: string]: number};
     // 根据roles获取孵化任务的总数量
@@ -126,4 +126,5 @@ interface SpawnTask {
     body: number[],
     memory: CreepMemory,
     energy: number,
+    upbody?: boolean,
 }

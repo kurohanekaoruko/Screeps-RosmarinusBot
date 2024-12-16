@@ -114,27 +114,26 @@ function handleOtherResources(creep: Creep, targetType: ResourceConstant): boole
 
 function LinkEnergyTransfer(creep: Creep) {
     const storage = creep.room.storage;
-    const terminal = creep.room.terminal;
-    if (!storage && !terminal) return;
+    if (!storage) return;
 
     let controllerLink = null;
     let manageLink = null;
     let normalLink = [];
     for(const link of creep.room.link) {
-        if(creep.room.source.some((source: any) => link.pos.inRangeTo(source, 2))) {
+        if (creep.room.source.some((source: any) => link.pos.inRangeTo(source, 2))) {
             continue;
         }
-        if(link.pos.inRangeTo(creep.room.controller, 2)) {
+        if (link.pos.inRangeTo(creep.room.controller, 2)) {
             controllerLink = link;
             continue;
         }
-        if(link.pos.inRangeTo(storage, 1) || link.pos.inRangeTo(terminal, 1)) {
+        const center = Memory['RoomControlData'][creep.room.name]?.center;
+        if (center && link.pos.inRangeTo(center.x, center.y, 1) && link.pos.inRangeTo(storage, 2)) {
             manageLink = link;
             continue;
         }
         normalLink.push(link);
     }
-    const nlink = normalLink.find((link: any) => link.store[RESOURCE_ENERGY] < 400);
 
     if (!manageLink) return; // 没有中心Link，不执行任务
 
@@ -149,7 +148,7 @@ function LinkEnergyTransfer(creep: Creep) {
         const source = storage?.store[RESOURCE_ENERGY] > 0 ? storage : null;
         if (source) return creep.withdrawOrMoveTo(source, RESOURCE_ENERGY);
     }
-    else if(nlink) {
+    else if(normalLink.some((link: any) => link.store[RESOURCE_ENERGY] < 400)) {
         if (manageLink?.store.getFreeCapacity(RESOURCE_ENERGY) < 100) {
             return; // 只在空余空间大于100时转移能量
         }
@@ -169,37 +168,39 @@ function LinkEnergyTransfer(creep: Creep) {
 }
 
 
-const manageFunction = function (creep: Creep) {
-    if (!creep.memory.dontPullMe) creep.memory.dontPullMe = true;
-    const storage = creep.room.storage;
-    const terminal = creep.room.terminal;
-
-    // 搬运任务
-    if (manageMission(creep)) {
+const Manage = {
+    run: function(creep: Creep) {
+        if (!creep.memory.dontPullMe) creep.memory.dontPullMe = true;
+        const storage = creep.room.storage;
+        const terminal = creep.room.terminal;
+    
+        // 搬运任务
+        if (manageMission(creep)) {
+            return;
+        }
+        // 取放Link
+        if (LinkEnergyTransfer(creep)) {
+            return;
+        }
+        
+        // 将身上的资源存放到storage、terminal中
+        const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
+        const target = storage?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? storage :
+                        terminal?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? terminal : null;
+        if (target && resourceType && creep.store[resourceType] > 0)
+            return creep.transferOrMoveTo(target, resourceType);
+        
+        // 没有任务时移动到布局中心
+        const center = Memory['RoomControlData'][creep.room.name]?.center;
+        if (center && creep.pos.inRangeTo(center.x, center.y, 2)) {
+            const pos = new RoomPosition(center.x, center.y, creep.room.name);
+            if (!creep.pos.isEqualTo(pos)) {
+                creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
+                return;
+            }
+        }
         return;
     }
-    // 取放Link
-    if (LinkEnergyTransfer(creep)) {
-        return;
-    }
-    
-    // 将身上的资源存放到storage、terminal中
-    const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
-    const target = storage?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? storage :
-                    terminal?.store.getFreeCapacity(RESOURCE_ENERGY) > 0 ? terminal : null;
-    if (target && resourceType && creep.store[resourceType] > 0)
-        return creep.transferOrMoveTo(target, resourceType);
-    
-    // // 没有任务时移动到布局中心
-    // const centralPos = global.BotMem('rooms', creep.room.name, 'center');
-    // if (centralPos) {
-    //     const pos = new RoomPosition(centralPos.x, centralPos.y, creep.room.name);
-    //     if (!creep.pos.isEqualTo(pos)) {
-    //         creep.moveTo(pos, { visualizePathStyle: { stroke: '#ffffff' } });
-    //         return;
-    //     }
-    // }
-    return;
 };
 
-export default manageFunction;
+export default Manage;

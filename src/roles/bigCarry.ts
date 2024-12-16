@@ -1,4 +1,15 @@
 function withdraw(creep: Creep) {
+    const drops = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 5, {
+        filter: (i) => i.resourceType === creep.memory['resource'] || !creep.memory['resource']
+    })
+
+    if (drops.length > 0) {
+        if (creep.pickup(drops[0]) === ERR_NOT_IN_RANGE) {
+            creep.moveTo(drops[0]);
+        }
+        return;
+    }
+
     if (creep.room.name != creep.memory.sourceRoom) {
         creep.moveToRoom(creep.memory.sourceRoom);
         return;
@@ -26,10 +37,13 @@ function transfer(creep: Creep) {
 
     const res = creep.memory['resource'] || RESOURCE_ENERGY;
 
-    const target = [creep.room.storage, creep.room.terminal].filter((i) => i && i.store.getFreeCapacity(res) > 0)[0];
+    const targets = [creep.room.storage, creep.room.terminal, ...creep.room.container].filter((i) => i && i.store.getFreeCapacity(res) > 0);
+    const target = creep.pos.findClosestByRange(targets);
 
     if (target) {
         creep.transferOrMoveTo(target, res);
+    } else {
+        creep.drop(res);
     }
     
 }

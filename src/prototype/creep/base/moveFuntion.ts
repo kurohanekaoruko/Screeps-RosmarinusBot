@@ -1,5 +1,8 @@
+import {getDirection} from '@/utils'
+
 export default class MoveFunction extends Creep {
     moveToRoom(roomName: string, options = { visualizePathStyle: { stroke: '#aa00ff' } }) {
+        if (this.fatigue > 0) return ERR_TIRED;
         if (this.room.name === roomName) {
             if (this.pos.x === 0) return this.move(RIGHT);
             if (this.pos.x === 49) return this.move(LEFT);
@@ -70,11 +73,7 @@ export default class MoveFunction extends Creep {
         }
         // 躲边界
         else if(this.pos.isRoomEdge()) {
-            this.moveTo(new RoomPosition(25, 25, this.room.name), {
-                visualizePathStyle: { stroke: color },
-                maxRooms: 1,
-                ignoreCreeps: false
-            })
+            this.move(getDirection(this.pos, new RoomPosition(25, 25, this.room.name)))
             bindcreep.moveTo(this);
             return true;
         }
@@ -91,7 +90,8 @@ export default class MoveFunction extends Creep {
                 if (terrain.get(pos[0], pos[1]) === TERRAIN_MASK_WALL) return false;
                 return true;
             })
-            bindcreep.moveTo(new RoomPosition(Pos[0], Pos[1], this.room.name));
+            const toPos = new RoomPosition(Pos[0], Pos[1], this.room.name)
+            bindcreep.move(getDirection(bindcreep.pos, toPos));
         }
         return false;
     }

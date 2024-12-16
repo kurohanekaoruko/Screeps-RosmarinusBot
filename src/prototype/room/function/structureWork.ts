@@ -46,10 +46,10 @@ export default class StructureWork extends Room {
         if (!this.checkMissionInPool('spawn')) return;
 
         let hc = null;
-    
+        let energyAvailable = this.energyAvailable;
         // 如果有能量，则生产 creep
         spawns.forEach(spawn => {
-            const task = this.getSpawnMission();
+            const task = this.getSpawnMission(energyAvailable);
             if (!task) return;
             if (!task.data?.memory?.role) {
                 this.deleteMissionFromPool('spawn', task.id);
@@ -64,9 +64,9 @@ export default class StructureWork extends Room {
             if (data.body?.length > 0) {
                 body = data.body;
             } else {
-                body = this.DynamicBodys(role);
+                body = this.GetRoleBodys(role, data.upbody);
             }
-            const bodypart = this.GenerateBodys(body);
+            const bodypart = this.GenerateBodys(body, role);
             if (!bodypart || bodypart.length == 0) {
                 this.submitSpawnMission(task.id);
                 return;
@@ -77,8 +77,8 @@ export default class StructureWork extends Room {
                 return;
             }
             const result = spawn.spawnCreep(bodypart, name, { memory: data.memory });
-            if (result == OK) {
-                console.log(`[${this.name}] Spawn ${name} ${role}`);
+            if (result == OK && cost <= energyAvailable) {
+                energyAvailable -= cost;
                 if (!global.CreepNum) global.CreepNum = {};
                 if (!global.CreepNum[this.name]) global.CreepNum[this.name] = {};
                 global.CreepNum[this.name][role] = (global.CreepNum[this.name][role] || 0) + 1;
@@ -114,6 +114,25 @@ export default class StructureWork extends Room {
         if (!this.tower) return;
         let towers = this.tower;
 
+        // 治疗己方战力单位
+        if (!global.attackUnitHeal) global.attackUnitHeal = {};
+        if (Game.time % 10 == 0) {
+            global.attackUnitHeal[this.name] = this.find(FIND_CREEPS, {
+                filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username)) && (
+                    c.body.some(b => b.type == ATTACK) || c.body.some(b => b.type == RANGED_ATTACK))
+            }).map(c => c.id);
+        }
+        let healers = (global.attackUnitHeal[this.name]||[])
+                .map((id: Id<Creep>) => Game.getObjectById(id))
+                .filter((c: Creep | null) => c && c.hits < c.hitsMax) as Creep[] | PowerCreep[];
+        if (healers.length > 0) {
+            towers.forEach(tower => {
+                let index = Math.floor(Math.random() * healers.length);
+                tower.heal(healers[index]);
+            })
+            return;
+        }
+
         // 如果有敌人，则攻击敌人
         if (!global.towerTargets) global.towerTargets = {};
         if (Game.time % 10 == 0) {
@@ -134,19 +153,17 @@ export default class StructureWork extends Room {
             return;
         }
 
-        // 治疗己方单位
+        // 治疗己方所有单位
         if (!global.towerHealTargets) global.towerHealTargets = {};
         if (Game.time % 10 == 0) {
             global.towerHealTargets[this.name] = this.find(FIND_POWER_CREEPS, {
                 filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
                 }).map(c => c.id);
-            if (global.towerHealTargets[this.name].length == 0) {
-                global.towerHealTargets[this.name] = this.find(FIND_CREEPS, {
-                    filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
-                }).map(c => c.id);
-            }
+            global.towerHealTargets[this.name] = global.towerHealTargets[this.name].concat(this.find(FIND_CREEPS, {
+                filter: c => c.hits < c.hitsMax && (c.my || Memory['whitelist']?.includes(c.owner.username))
+            }).map(c => c.id));
         }
-        let healers = (global.towerHealTargets[this.name]||[])
+        healers = (global.towerHealTargets[this.name]||[])
                 .map((id: Id<Creep>) => Game.getObjectById(id))
                 .filter((c: Creep | null) => c && c.hits < c.hitsMax) as Creep[] | PowerCreep[];
         if (healers.length > 0) {
@@ -156,8 +173,6 @@ export default class StructureWork extends Room {
             })
             return;
         }
-
-
 
         // 修复建筑物
         if (!global.towerTaskTarget) global.towerTaskTarget = {};
@@ -175,12 +190,11 @@ export default class StructureWork extends Room {
                 global.towerTaskTarget[this.name] = target.id;
             }
         }
-        
         const target = Game.getObjectById(global.towerTaskTarget[this.name]) as Structure;
         if(target) {
             towers.forEach(t => {
-                // 如果塔的能量不足一半，则不执行修复逻辑
-                if(t.store[RESOURCE_ENERGY] < 500) return;
+                // 如果塔的能量不足，则不执行修复逻辑
+                if(t.store[RESOURCE_ENERGY] < 650) return;
                 t.repair(target);
             });
         }
@@ -191,9 +205,9 @@ export default class StructureWork extends Room {
         if (this.level < 5) return;  // 只有在房间等级达到 5 时才启用 Link 能量传输
         if (this.link.length < 2) return;  // 至少需要两个 Link
 
-        if (Game.time % 5 != 0) return;
+        if (Game.time % 10 != 0) return;
         
-        let center = global.BotMem('rooms', this.name, 'center');
+        let center = Memory['RoomControlData'][this.name]?.center
         let centerPos: RoomPosition;
         if (center) centerPos = new RoomPosition(center.x, center.y, this.name);
 
@@ -255,9 +269,9 @@ export default class StructureWork extends Room {
             }
         }
         if (manageLink && manageLink.cooldown == 0 && manageLink.store[RESOURCE_ENERGY] > 400){
-            normalLink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
-            if (normalLink) {
-                manageLink.transferEnergy(normalLink[0]);  // 传输能量
+            const nlink = normalLink.find(link => link.store[RESOURCE_ENERGY] < 400 && !transferOK[link.id]);
+            if (nlink) {
+                manageLink.transferEnergy(nlink);  // 传输能量
                 return;
             }
         }
@@ -280,7 +294,7 @@ export default class StructureWork extends Room {
         // lab数量不足时不合成
         if (!this.lab || this.lab.length < 3) return;
 
-        const memory =  global.BotMem('structures', this.name);
+        const memory =  Memory['StructControlData'][this.name];
         // lab关停时不合成
         if (!memory || !memory.lab || this.memory.defend) return;
         // 没有设置底物lab时不合成
@@ -304,13 +318,17 @@ export default class StructureWork extends Room {
             .filter(lab => lab.id !== memory.labA && lab.id !== memory.labB &&
                     lab && lab.cooldown === 0);
         // boost设置
-        const botmem =  global.BotMem('structures', this.name, 'boostTypes');
+        const boostmem = Memory['StructControlData'][this.name]['boostRes'];
+        const boostmem2 = Memory['StructControlData'][this.name]['boostTypes']
         // 遍历其他lab进行合成
         for (let lab of otherLabs) {
             // 合成产物
             const labProduct = REACTIONS[labAtype][labBtype] as ResourceConstant;
             // 如果有boost并且boost类型与合成产物不同，则跳过
-            if(botmem[lab.id] && botmem[lab.id] != labProduct) continue;
+            if (boostmem && boostmem[lab.id] &&
+                boostmem[lab.id].type != labProduct) continue;
+            if (boostmem2 && boostmem2[lab.id] &&
+                boostmem2[lab.id].type != labProduct) continue;
             // 检查lab中是否存在与合成产物不同的资源
             if (lab.mineralType && lab.mineralType !== labProduct) {
                 continue; // 如果存在不同的资源，跳过这个lab
@@ -331,9 +349,10 @@ export default class StructureWork extends Room {
 
         const task = this.getSendMission();
         if (!task) return;
+
         const { targetRoom, resourceType, amount } = task.data;
         let sendAmount = Math.min(amount, terminal.store[resourceType]);
-        const cost = Game.market.calcTransactionCost(sendAmount, this.name, targetRoom);
+        let cost = Game.market.calcTransactionCost(sendAmount, this.name, targetRoom);
         if (resourceType === RESOURCE_ENERGY) {
             sendAmount = Math.min(sendAmount, terminal.store[resourceType] - cost);
         }
@@ -342,33 +361,40 @@ export default class StructureWork extends Room {
         }
         const result = terminal.send(resourceType, sendAmount, targetRoom);
         if (result === OK) {
-            if(amount - sendAmount > 100) {
+            if(amount - sendAmount > 0) {
                 this.updateMissionPool('send', task.id, {data: {amount: amount - sendAmount}});
             } else {
                 this.deleteMissionFromPool('send', task.id);
             }
-            console.log(`房间 ${this.name} 向 ${targetRoom} 发送了 ${sendAmount} 单位的 ${resourceType}`);
+            cost = Game.market.calcTransactionCost(sendAmount, this.name, targetRoom);
+            console.log(`房间 ${this.name} 向 ${targetRoom} 发送了 ${sendAmount} 单位的 ${resourceType}, 能量消耗: ${cost}`);
         } else {
             console.log(`房间 ${this.name} 向 ${targetRoom} 发送 ${sendAmount} 单位的 ${resourceType} 失败，错误代码：${result}`);
         }
     }
 
     FactoryWork() {
-        if (Game.time % 10 !== 1) return;  // 每 10 tick 执行一次
-        const memory =  global.BotMem('structures', this.name);
-        // 关停时不处理
-        if(!memory || !memory.factory) return;
         const factory = this.factory;
         // 工厂不存在时不处理
-        if(!factory) return;
+        if (!factory) return;
         // 冷却时不处理
-        if(factory.cooldown != 0) return;
+        if (factory.cooldown != 0) return;
+
+        const memory =  Memory['StructControlData'][this.name];
+        // 关停时不处理
+        if (!memory || !memory.factory) return;
         // 没有任务时不处理
         const product = memory.factoryProduct;
         if (!product) return;
 
+        // 原料
+        const components = COMMODITIES[product]?.components;
+        // 原料不足时不处理
+        if (Object.keys(components).some((c: any) => factory.store[c] < components[c])) return;
+
         const result = factory.produce(product);
         if (result !== OK) {
+            if (Game.time % 10 == 0)
             if(factory.store[product] > 0) {
                 this.ManageMissionAdd('f', 's', product, factory.store[product]);
             }
@@ -379,7 +405,7 @@ export default class StructureWork extends Room {
         if(this.level < 8) return;
 
         // 关停时不处理
-        if(!global.BotMem('structures', this.name)?.powerSpawn) return;
+        if(!Memory['StructControlData'][this.name]?.powerSpawn) return;
         // 能量不足不处理
         if(this.getResourceAmount(RESOURCE_ENERGY) < 10000) return;
 

@@ -4,12 +4,18 @@
 export const powerRunner = function (pc: any) {
     if (!pc) return;
     if (!pc.ticksToLive) {
-        if (Game.time % 100) return;
-        const pcMem = global.BotMem('powerCreep');
-        if (!pcMem[pc.name]) return;
+        if (Game.time % 20) return;
+        const pcMem = pc.memory;
         if (pc.spawnCooldownTime > Date.now()) return;
-        const powerSpawn = Game.rooms[pcMem[pc.name]].powerSpawn;
-        if (powerSpawn) pc.spawn(powerSpawn);
+        const powerSpawn = Game.rooms[pcMem['spawnRoom']].powerSpawn;
+        if (powerSpawn) {
+            const result = pc.spawn(powerSpawn);
+            if (result === OK) {
+                console.log(`PowerCreep ${pc.name} 在 ${pcMem['spawnRoom']} 孵化`);
+            } else {
+                console.log(`PowerCreep ${pc.name} 在 ${pcMem['spawnRoom']} 孵化失败: ${result}`);
+            }
+        }
         return;
     }
 

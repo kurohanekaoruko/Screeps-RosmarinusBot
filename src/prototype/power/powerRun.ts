@@ -18,6 +18,8 @@ export default class PowerCreepRun extends PowerCreep {
         if(this.transferOPS())  return;
         // 续命
         if(this.ToRenew()) return;
+        // 取ops
+        if(this.withdrawOPS())  return;
 
         const role = name.match(/(\w+)-\d+/)[1];
 
@@ -27,15 +29,16 @@ export default class PowerCreepRun extends PowerCreep {
 
 const PowerCreepAction = {
     'F': function(pc: PowerCreep) {
-        if(pc.withdrawOPS())  return;      // 取出ops
+        if(pc.Operate_Storage())  return;  // 扩容storage
         if(pc.Operate_Factory())  return;    // 操作工厂
+        if(pc.Operate_LAB())  return;      // 增速lab
         if(pc.transferPower())  return;      // 填充power
     },
     'O': function(pc: PowerCreep) {
-        if(pc.withdrawOPS())  return;      // 取出ops
-        if(pc.Regen_Source())  return;  // 生成能量
-        if(pc.Operate_Power())  return;  // 提高Power处理速率
+        if(pc.Regen_Source())  return;       // 生成能量
+        if(pc.Operate_Tower())  return;      // 增强塔
         if(pc.Operate_Extension())  return;  // 填充扩展
         if(pc.Operate_Spawn())  return;        // 加速spawn
+        if(pc.Operate_Power())  return;  // 提高Power处理速率
     },
 }

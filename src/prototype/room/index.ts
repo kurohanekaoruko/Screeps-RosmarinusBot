@@ -3,7 +3,7 @@ import BaseFunction from "./function/baseFunction"
 import StructureWork from "./function/structureWork"
 import OutMine from "./function/outMine"
 import ActiveDefend from "./function/activeDefend"
-import RoomRun from "./run"
+import RoomInit from "./init"
 
 import AutoMarket from "./auto/autoMarket"
 import AutoBuild from "./auto/autoBuild"
@@ -34,7 +34,7 @@ const plugins = [
     Mission,        // 任务模块
 
     ActiveDefend,   // 房间防御
-    RoomRun,        // 房间运行
+    RoomInit,        // 房间运行
 ]
 
 export default () => plugins.forEach(plugin => assignPrototype(Room, plugin))

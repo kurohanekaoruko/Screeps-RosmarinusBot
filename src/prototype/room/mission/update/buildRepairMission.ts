@@ -9,9 +9,8 @@ function UpdateBuildRepairMission(room: Room) {
 
     const NORMAL_STRUCTURE_THRESHOLD = 0.8;     // 普通修复建筑耐久度阈值
     const URGENT_STRUCTURE_THRESHOLD = 0.1;     // 紧急修复建筑耐久度阈值
-    const NORMAL_WALL_THRESHOLD = 0.001;        // 普通修复墙耐久度阈值
-    const URGENT_WALL_HITS = 2000;              // 紧急修复墙耐久度
-    
+    const NORMAL_WALL_HITS = 30000;            // 普通修复墙耐久度
+    const URGENT_WALL_HITS = 3000;              // 紧急修复墙耐久度
 
     // 维修优先级：紧急维修-建筑 > 紧急维修-墙 > 常规维修-建筑 > 常规维修-墙
     for (const structure of allStructures) {
@@ -19,12 +18,15 @@ function UpdateBuildRepairMission(room: Room) {
         const posInfo = `${pos.x}/${pos.y}/${pos.roomName}`
         if (structureType !== STRUCTURE_WALL && structureType !== STRUCTURE_RAMPART) {
             // 处理建筑
-            if (hits < hitsMax * URGENT_STRUCTURE_THRESHOLD) {  // 紧急维修
+            // 紧急维修
+            if (hits < hitsMax * URGENT_STRUCTURE_THRESHOLD) {
                 const data = {target: id, pos: posInfo, hits: hitsMax * URGENT_STRUCTURE_THRESHOLD};
                 room.BuildRepairMissionAdd('repair', 1, data)
                 continue;
             }
-            if (hits < hitsMax * NORMAL_STRUCTURE_THRESHOLD) {  // 常规维修
+
+            // 常规维修
+            if (hits < hitsMax * NORMAL_STRUCTURE_THRESHOLD) {
                 const data = {target: id, pos: posInfo, hits: hitsMax * NORMAL_STRUCTURE_THRESHOLD};
                 room.BuildRepairMissionAdd('repair', 3, data)
                 continue;
@@ -36,8 +38,8 @@ function UpdateBuildRepairMission(room: Room) {
                 room.BuildRepairMissionAdd('repair', 2, data)
                 continue;
             }
-            if (hits < hitsMax * NORMAL_WALL_THRESHOLD) {   // 常规维修
-                const data = {target: id, pos: posInfo, hits: hitsMax * NORMAL_WALL_THRESHOLD};
+            if (hits < NORMAL_WALL_HITS) {   // 常规维修
+                const data = {target: id, pos: posInfo, hits: NORMAL_WALL_HITS};
                 room.BuildRepairMissionAdd('repair', 4, data)
                 continue;
             }
@@ -67,23 +69,42 @@ function UpdateBuildRepairMission(room: Room) {
 // 刷墙任务
 function UpdateWallRepairMission(room: Room) {
     let WALL_HITS_MAX_THRESHOLD = 0.5;        // 墙最大耐久度阈值
-    const botMem = global.BotMem('structures', room.name);
+    const botMem = Memory['StructControlData'][room.name];
     if (botMem['ram_threshold']) {
         WALL_HITS_MAX_THRESHOLD = Math.min(botMem['ram_threshold'], 1);
     }
-    const memory = global.BotMem('layout', room.name);
+    const memory = Memory['LayoutData'][room.name] as { [key: string]: number[]};
     if (!memory) return;
-    const rampartMem = memory['rampart'] || [];
     const wallMem = memory['wall'] || [];
-    const walls = room.find(FIND_STRUCTURES, {
+    let rampartMem = memory['rampart'] || [];
+    let structRampart = [];
+    for (let s of ['spawn', 'tower', 'storage', 'terminal', 'factory', 'lab', 'nuker', 'powerSpawn']) {
+        structRampart.push(...(memory[s] || []));
+    }
+    rampartMem = [...new Set(rampartMem.concat(structRampart))];
+    const ramwalls = room.find(FIND_STRUCTURES, {
         filter: (structure) => structure.hits < structure.hitsMax &&
         (structure.structureType === STRUCTURE_WALL && wallMem.includes(compress(structure.pos.x,structure.pos.y)) ||
         (structure.structureType === STRUCTURE_RAMPART && rampartMem.includes(compress(structure.pos.x,structure.pos.y))))
     });
-    for(const structure of walls) {
+    
+    const roomNukes = room.find(FIND_NUKES) || [];
+    for(const structure of ramwalls) {
         const { hitsMax, hits, id, pos } = structure;
         const posInfo = `${pos.x}/${pos.y}/${pos.roomName}`
-        if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD) {  // 刷墙
+        if (roomNukes.length > 0) {
+            // 计算附近核弹的伤害
+            const areaNukeDamage = roomNukes.filter((n) => pos.inRangeTo(n.pos, 2))
+            .reduce((hits, nuke) => pos.isEqualTo(nuke.pos) ? hits + 1e7 : hits + 5e6, 0);
+            // 防核维修
+            if (hits < areaNukeDamage + 1e6) {
+                const data = {target: id, pos: posInfo, hits: areaNukeDamage + 1e6};
+                room.BuildRepairMissionAdd('walls', 0, data)
+                continue;
+            }
+        }
+        // 刷墙维修
+        if(hits < hitsMax * WALL_HITS_MAX_THRESHOLD) {
             const level = Math.floor(hits / hitsMax * 100) + 1; // 优先级
             const targetHits = level / 100 * hitsMax;
             const data = {target: id, pos: posInfo, hits: targetHits};
@@ -91,6 +112,7 @@ function UpdateWallRepairMission(room: Room) {
             continue;
         }
     }
+
 }
 
 // 检查任务是否有效

@@ -3,11 +3,11 @@ interface Creep {
 
     moveHomeRoom(): boolean;
     moveToRoom(roomName: string, options?:{[key: string]: any}): any;
-    doubleMove(target: any, color?: string, ignoreCreeps?: boolean): boolean;
+    doubleMove(target: RoomPosition, color?: string, ignoreCreeps?: boolean): boolean;
     doubleMoveToRoom(roomName: string, color?: string): boolean;
 
     withdrawEnergy(pickup?: boolean): void;
-    goBoost(boostTypes: string[], must?: boolean): boolean;
+    goBoost(boostTypes: string[], must?: boolean, reserve?: boolean): boolean;
     unboost(): boolean;
     transferOrMoveTo(target: AnyCreep | Structure, resoureType: ResourceConstant, amount?: number): boolean;
     withdrawOrMoveTo(target: any | Tombstone | Ruin, resoureType?: ResourceConstant, amount?: number): boolean;

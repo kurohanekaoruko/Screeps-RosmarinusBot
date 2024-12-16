@@ -3,15 +3,19 @@ import { RoleData, RoleLevelData } from '@/constant/CreepConstant'
 // 检查主要角色是否需要孵化
 function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: number) {
     const lv = room.level;
+    const spup = Memory['RoomControlData'][room.name].spup;
     switch (role) {
         case 'harvester':
+            if(room.memory.defend) return false;
             return currentNum < room.source.length
         case 'upgrader':
-            if(global.BotMem('rooms', room.name, 'spup')) return false;
+            if(room.memory.defend) return false;
+            if(spup) return false;
             if(lv == 8 && room.controller.ticksToDowngrade >= 150000) return false;
             return currentNum < num;
         case 'transport':
             if (room.AllEnergy() < 1000) return false;
+            if (spup > 4) num += 1
             return currentNum < num && (room.storage || room.terminal);
         case 'manage':
             return currentNum < num && room.storage && room.terminal;
@@ -23,31 +27,34 @@ function RoleSpawnCheck(room: Room, role: string, currentNum: number, num: numbe
             }
             return currentNum < num && room.container.length > 0;
         case 'builder':
-            return currentNum < 2 && room.checkMissionInPool('build');
+            if(room.memory.defend) return false;
+            if(!room.checkMissionInPool('build')) return false;
+            if(room.getMissionNumInPool('build') > 10) return currentNum < 2;
+            else return currentNum < 1;
         case 'repair':
             return currentNum < 1 && 
                 (room.getMissionNumInPool('repair') > 20 || 
                 (room.checkMissionInPool('walls') && room.AllEnergy() > 50000));
         case 'miner':
+            if(room.memory.defend) return false;
             return currentNum < 1 && lv >= 6 &&
                     room.extractor &&
                     room.mineral.mineralAmount > 0;
         case 'har-car':
             return currentNum < 2 && lv < 3 && (!room.container || room.container.length < 1);
         case 'speedup-upgrad':
-            const spup = global.BotMem('rooms', room.name, 'spup');
             if (!spup) return false;
             if (room.level == 8) {
-                global.BotMem('rooms', room.name)['spup'] = 0;
+                Memory['RoomControlData'][room.name].spup = 0;
                 console.log(`${room.name} 已到达八级，自动关闭冲级。`);
                 return false;
             }
             if (room.AllEnergy() < 10000) return false;
             return (currentNum < spup);
         case 'speedup-repair':
-            const spre = global.BotMem('rooms', room.name, 'spre');
+            const spre = Memory['RoomControlData'][room.name].spre;
             if (!spre) return false;
-            if (room.level < 8)  return false;
+            if (room.level < 7)  return false;
             if (room.storage?.store[RESOURCE_ENERGY] < 10000) return false;
             return currentNum < spre && room.checkMissionInPool('walls');
         default:

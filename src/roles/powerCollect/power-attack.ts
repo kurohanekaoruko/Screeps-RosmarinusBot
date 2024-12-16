@@ -7,24 +7,41 @@ const power_attack = {
 
         if(!creep.memory.boosted) {
             const boostLevel = creep.memory['boostLevel'];
-            let boostRes = null;
             if (boostLevel == 1) {
-                boostRes = ['UH', 'GO'];
-            }
-            if (boostRes) {
-                creep.memory.boosted = creep.goBoost(boostRes, true);
+                creep.memory.boosted = creep.goBoost(['UH', 'GO'], true);
+                if (creep.memory.boosted) {
+                    creep.room.SubmitBoostTask('GO', 150);
+                    creep.room.SubmitBoostTask('UH', 600);
+                }
             } else {
                 creep.memory.boosted = true;
             }
             return;
         }
 
+        if (!creep.memory.bind && creep.room.name == creep.memory.targetRoom) {
+            let hostiles = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 8) || [];
+            if (hostiles.length == 0) return;
+            const healHostiles = hostiles.filter((c: any) => c.body.some((p: any) => p.type == HEAL));
+            if (healHostiles.length > 0) {
+                const hostile = creep.pos.findClosestByRange(healHostiles);
+                if (creep.pos.isNearTo(hostile)) creep.attack(hostile);
+                creep.moveTo(hostile);
+                return;
+            } 
+            const attackHostiles = hostiles.filter((c: any) => c.body.some((p: any) => p.type == ATTACK || p.type == RANGED_ATTACK));
+            if (attackHostiles.length > 0) {
+                const hostile = creep.pos.findClosestByRange(attackHostiles);
+                if (creep.pos.isNearTo(hostile)) creep.attack(hostile);
+                creep.moveTo(hostile);
+                return;
+            }
+        }
         if (!creep.memory.bind) return; // 等待绑定
+        
 
         const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
-        if (!bindcreep || Game.getObjectById(creep.memory.bind)['memory']['bind'] != creep.id ||
-            Game.getObjectById(creep.memory.bind)['memory']['targetRoom'] != creep.memory.targetRoom
-        ) {
+        if (!bindcreep) {
             delete creep.memory.bind;
         }
 
@@ -71,7 +88,7 @@ const power_attack = {
             const hostile = Game.getObjectById(creep.memory['hostile']) as Creep;
             if (hostile && hostile.pos.inRangeTo(powerBank.pos, 6)) {
                 if (creep.pos.isNearTo(hostile)) creep.attack(hostile);
-                creep.doubleMove(hostile, '#ff0000', false);
+                creep.doubleMove(hostile.pos, '#ff0000', false);
                 return;
             } else {
                 delete creep.memory['hostile'];
@@ -85,7 +102,7 @@ const power_attack = {
             if(creep.hits == creep.hitsMax)
                 creep.attack(powerBank);
         } else {
-            creep.doubleMove(powerBank);
+            creep.doubleMove(powerBank.pos);
         }
 
         return false;

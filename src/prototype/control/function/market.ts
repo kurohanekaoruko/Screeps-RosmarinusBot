@@ -157,9 +157,8 @@ export default {
         // 自动市场交易
         auto: {
             list(roomName: string) {
-                const BOT_NAME = global.BOT_NAME;
                 if(roomName) {
-                    const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                    const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                     if(!autoMarket || autoMarket.length == 0) {
                         console.log(`房间 ${roomName} 没有开启自动交易`);
                     }
@@ -172,7 +171,7 @@ export default {
                     return OK;
                 }
     
-                const autoMarket = Memory[BOT_NAME]['autoMarket']
+                const autoMarket = Memory['AutoData']['AutoMarketData']
                 if(!autoMarket || Object.keys(autoMarket).length == 0) {
                     console.log(`没有房间开启自动交易`);
                 }
@@ -188,12 +187,11 @@ export default {
                 return OK;
             },
             remove(roomName: string, type: string, orderType: string) {
-                const BOT_NAME = global.BOT_NAME;
-                if(!Memory[BOT_NAME]['autoMarket'][roomName]) {
+                if(!Memory['AutoData']['AutoMarketData'][roomName]) {
                     console.log(`房间 ${roomName} 没有开启自动交易`);
                     return OK;
                 }
-                const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                 const index = autoMarket.findIndex((item: any) => item.type === type && item.orderType === orderType);
                 if(index === -1) {
                     console.log(`房间 ${roomName} 没有开启自动交易：${type}，${orderType}`);
@@ -204,11 +202,10 @@ export default {
                 return OK;
             },
             buy(roomName: any, type: any, amount: any) {
-                const BOT_NAME = global.BOT_NAME;
-                if(!Memory[BOT_NAME]['autoMarket'][roomName]) {
-                    Memory[BOT_NAME]['autoMarket'][roomName] = [];
+                if(!Memory['AutoData']['AutoMarketData'][roomName]) {
+                    Memory['AutoData']['AutoMarketData'][roomName] = [];
                 }
-                const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                 const autoOrder = autoMarket.find((item: any) => item.type === type && item.orderType === 'buy');
                 if(!autoOrder) {
                     const item = {type, amount, orderType: 'buy'};
@@ -221,11 +218,10 @@ export default {
                 return OK;
             },
             sell(roomName: any, type: any, amount: any, ) {
-                const BOT_NAME = global.BOT_NAME;
-                if(!Memory[BOT_NAME]['autoMarket'][roomName]) {
-                    Memory[BOT_NAME]['autoMarket'][roomName] = [];
+                if(!Memory['AutoData']['AutoMarketData'][roomName]) {
+                    Memory['AutoData']['AutoMarketData'][roomName] = [];
                 }
-                const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                 if(!autoMarket.find((item: any) => item.type === type && item.orderType === 'sell')) {
                     autoMarket.push({type, amount, orderType: 'sell'});
                     console.log(`已在房间 ${roomName} 开启自动出售${type}，出售阈值${amount}`);
@@ -235,8 +231,7 @@ export default {
                 return OK;
             },
             dealbuy(roomName: string, type: string, amount: number) {
-                const BOT_NAME = global.BOT_NAME;
-                const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                 if(!autoMarket.find((item: any) => item.type === type && item.orderType === 'dealbuy')) {
                     autoMarket.push({type, amount, orderType: 'dealbuy'});
                     console.log(`已在房间 ${roomName} 开启自动购买交易${type}，购买阈值${amount}`);
@@ -246,8 +241,7 @@ export default {
                 return OK;
             },
             dealsell(roomName: string, type: string, amount: number) {
-                const BOT_NAME = global.BOT_NAME;
-                const autoMarket = Memory[BOT_NAME]['autoMarket'][roomName];
+                const autoMarket = Memory['AutoData']['AutoMarketData'][roomName];
                 if(!autoMarket.find((item: any) => item.type === type && item.orderType === 'dealsell')) {
                     autoMarket.push({type, amount, orderType: 'dealsell'});
                     console.log(`已在房间 ${roomName} 开启自动出售交易${type}，出售阈值${amount}`);

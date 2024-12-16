@@ -58,7 +58,7 @@ export default class MissionAdd extends Room {
     BuildRepairMissionAdd(type: 'build' | 'repair' | 'walls', level: number, data: BuildTask | RepairTask) {
         // 检查是否有相同任务
         let existingTaskId = this.checkSameMissionInPool(type, { target: data.target });
-        return existingTaskId === null ?
+        return existingTaskId === null ? 
                 this.addMissionToPool(type, level, data) : // 如果不存在相同任务，添加新任务
                 this.updateMissionPool(type, existingTaskId, {level, data}); // 如果存在相同任务，更新任务数据
     }
@@ -74,7 +74,7 @@ export default class MissionAdd extends Room {
     }
 
     // 添加孵化任务
-    SpawnMissionAdd(name: string, body: number[], level: number, role: string, memory: CreepMemory) {
+    SpawnMissionAdd(name: string, body: number[], level: number, role: string, memory: CreepMemory, upbody?: boolean) {
         if (!RoleData[role]) {
             console.log(`role ${role} 不存在`);
             return -1;
@@ -84,7 +84,12 @@ export default class MissionAdd extends Room {
         const energy = this.CalculateEnergy(bodypart);
         if(energy > this.energyCapacityAvailable) return -1;
         memory.role = role;
-        this.addMissionToPool('spawn', level, {name, body, memory, energy})
+        if (upbody === undefined) {
+            this.addMissionToPool('spawn', level, {name, body, memory, energy})
+        } else {
+            upbody = upbody || false;
+            this.addMissionToPool('spawn', level, {name, body, memory, energy, upbody})
+        }
         if (!global.SpawnMissionNum) global.SpawnMissionNum = {};
         if (!global.SpawnMissionNum[this.name]) global.SpawnMissionNum[this.name] = {};
         if (!global.SpawnMissionNum[this.name][role]) global.SpawnMissionNum[this.name][role] = 0;

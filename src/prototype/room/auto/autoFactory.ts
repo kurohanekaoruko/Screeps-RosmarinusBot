@@ -3,7 +3,7 @@ export default class AutoFactory extends Room {
     autoFactory() {
         if (Game.time % 50) return;
         if (!this.factory) return;
-        const botmem =  global.BotMem('structures', this.name);
+        const botmem = Memory['StructControlData'][this.name];
         // 关停时不处理
         if (!botmem || !botmem.factory) return;
 
@@ -36,7 +36,7 @@ export default class AutoFactory extends Room {
         }
 
         // 获取自动任务列表
-        const autoFactoryMap = global.BotMem('autoFactory', this.name);
+        const autoFactoryMap = Memory['AutoData']['AutoFactoryData'][this.name];
         if (!autoFactoryMap || !Object.keys(autoFactoryMap).length) return;
 
         // 查找未到达限额且原料足够的任务

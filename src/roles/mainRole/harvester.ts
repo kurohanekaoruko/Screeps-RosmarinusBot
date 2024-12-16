@@ -17,21 +17,21 @@ const harGetContainer = {
 }
 
 const harvest = function (creep: Creep) {
-    // 处理附近的掉落资源
-    const handleLinkAndDroppedResources = () => {
-        const link = harGetContainer.link(creep);
-        if (!link) return false;
-        const closestResource = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
-            filter: (resource: Resource) => {
-                return resource.resourceType === RESOURCE_ENERGY
-            }
-        })[0];
-        if (!closestResource) return false;
-        creep.pickup(closestResource)
-        return true;
-    };
+    // // 处理附近的掉落资源
+    // const handleLinkAndDroppedResources = () => {
+    //     const link = harGetContainer.link(creep);
+    //     if (!link) return false;
+    //     const closestResource = creep.pos.findInRange(FIND_DROPPED_RESOURCES, 1, {
+    //         filter: (resource: Resource) => {
+    //             return resource.resourceType === RESOURCE_ENERGY
+    //         }
+    //     })[0];
+    //     if (!closestResource) return false;
+    //     creep.pickup(closestResource)
+    //     return true;
+    // };
 
-    if (handleLinkAndDroppedResources()) return;
+    // if (handleLinkAndDroppedResources()) return;
 
     if (!creep.memory.targetSourceId) {
         const closestSource = creep.room.closestSource(creep);
@@ -49,7 +49,9 @@ const harvest = function (creep: Creep) {
         return;
     }
     if (targetSource.energy > 0) {
-        if (creep.harvest(targetSource) === ERR_NOT_IN_RANGE) {
+        if (creep.pos.isNearTo(targetSource)) {
+            creep.harvest(targetSource);
+        } else {
             creep.moveTo(targetSource, {
                 visualizePathStyle: { stroke: '#ffaa00' },
                 maxRooms: 1,
@@ -73,8 +75,6 @@ const harvest = function (creep: Creep) {
 const transfer = function (creep: Creep) {
     // 存储能量逻辑
     let target = Game.getObjectById(creep.memory.cache.targetId) as StructureContainer | StructureLink | StructureStorage;
-
-    const targets = [];
 
     const getTarget = () => {
         target = harGetContainer['link'](creep) || harGetContainer['container'](creep);
@@ -153,7 +153,7 @@ const transfer = function (creep: Creep) {
     // 如果容器不存在或已满，重新查找容器
     if (!target || target.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
         creep.memory.cache.targetId = null;  // 清除缓存
-
+        const targets = [];
         target = getTarget();
         if(target) targets.push(target);
         else if(containerBuild()) return;
@@ -182,13 +182,6 @@ const transfer = function (creep: Creep) {
         } else {
             const resourceType = Object.keys(creep.store)[0] as ResourceConstant;
             creep.transferOrMoveTo(target, resourceType);
-        }
-    } else {
-        if(creep.room.link.find(l => l.pos.inRangeTo(creep.pos, 2))) return;
-        // 如果没有其他目标，尝试使用储存设施
-        target = creep.room.storage as StructureStorage;
-        if (target && target.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-            creep.transferOrMoveTo(target, RESOURCE_ENERGY);
         }
     }
 }

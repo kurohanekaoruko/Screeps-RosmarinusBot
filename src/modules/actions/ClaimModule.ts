@@ -40,7 +40,19 @@ const ClaimModule = {
                 const room = Game.rooms[despoilFlag[1]];
                 if (!room.controller || !room.controller.my) continue;
                 room.SpawnMissionAdd('', [], -1, 'logistic', { 
-                    homeRoom: despoilFlag[1],
+                    targetRoom: despoilFlag[1],
+                    sourceRoom: Game.flags[flagName].pos.roomName
+                } as any);
+                continue;
+            }
+
+            // 增援能量
+            const carryEnergyFlag = flagName.match(/^([EW][1-9]+[NS][1-9]+)[-_#/]carryEnergy(?:[-_#/].*)?$/);
+            if (Game.time % 500 == 0 && carryEnergyFlag) {
+                const room = Game.rooms[carryEnergyFlag[1]];
+                if (!room.controller || !room.controller.my) continue;
+                room.SpawnMissionAdd('', [], -1, 'big-carry', {
+                    sourceRoom: carryEnergyFlag[1],
                     targetRoom: Game.flags[flagName].pos.roomName
                 } as any);
                 continue;

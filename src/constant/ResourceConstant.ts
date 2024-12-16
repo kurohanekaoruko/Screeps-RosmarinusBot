@@ -85,6 +85,8 @@ export const LabMap = {
     'XUHO2': { raw1: 'UHO2', raw2: 'X' },
 }
 
+export const LabRes = ['H', 'O', 'Z', 'K', 'L', 'U', 'X']
+
 // lab合成自动优先级
 export const LabLevel = {
     'ZK': 1,
@@ -193,6 +195,9 @@ export const unzipMap = {
 }
 
 export const Goods = [
+    RESOURCE_METAL, RESOURCE_BIOMASS, RESOURCE_SILICON, RESOURCE_MIST,
+    RESOURCE_COMPOSITE, RESOURCE_CRYSTAL, RESOURCE_LIQUID,
+
     RESOURCE_ALLOY, RESOURCE_CELL, RESOURCE_WIRE, RESOURCE_CONDENSATE,
     RESOURCE_TUBE, RESOURCE_PHLEGM, RESOURCE_SWITCH, RESOURCE_CONCENTRATE,
     RESOURCE_FIXTURES, RESOURCE_TISSUE, RESOURCE_TRANSISTOR, RESOURCE_EXTRACT,

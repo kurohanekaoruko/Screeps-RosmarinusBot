@@ -22,7 +22,7 @@ const double_dismantle_action = {
                 const targetStructure = Structures.find((s) => s.structureType === STRUCTURE_WALL || s.structureType == STRUCTURE_RAMPART) ||
                                         Structures[0];
                 if(creep.pos.isNearTo(targetStructure)) creep.dismantle(targetStructure);
-                else creep.doubleMove(targetStructure, '#ffff00');
+                else creep.doubleMove(targetStructure.pos, '#ffff00');
                 return true;
             }
         }
@@ -31,34 +31,36 @@ const double_dismantle_action = {
     }
 }
 
-const double_dismantle = function (creep: Creep) {
-    if (!creep.memory.notified) {
-        creep.notifyWhenAttacked(false);
-        creep.memory.notified = true;
+const double_dismantle = {
+    run: function (creep: Creep) {
+        if (!creep.memory.notified) {
+            creep.notifyWhenAttacked(false);
+            creep.memory.notified = true;
+        }
+        if(!creep.memory.boosted) {
+            const boosts = ['XGHO2', 'GHO2', 'GO', 'XZH2O', 'ZH2O', 'ZH', 'XZHO2', 'ZHO2', 'ZO'];
+            creep.memory.boosted = creep.goBoost(boosts);
+            return
+        }
+    
+        // 等待绑定
+        if(!creep.memory.bind) return;
+    
+        // 获取绑定的另一个creep
+        const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
+    
+        if(!bindcreep) {
+            delete creep.memory.bind;
+            return;
+        }
+    
+        if (double_dismantle_action.move(creep)) return;
+    
+        // 移动到目标房间.未到达房间不继续行动
+        if (creep.doubleMoveToRoom(creep.memory.targetRoom, '#ff0000')) return;
+    
+        if (double_dismantle_action.dismantle(creep)) return;
     }
-    if(!creep.memory.boosted) {
-        const boosts = ['XGHO2', 'GHO2', 'GO', 'XZH2O', 'ZH2O', 'ZH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.goBoost(boosts);
-        return
-    }
-
-    // 等待绑定
-    if(!creep.memory.bind) return;
-
-    // 获取绑定的另一个creep
-    const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
-
-    if(!bindcreep) {
-        delete creep.memory.bind;
-        return;
-    }
-
-    if (double_dismantle_action.move(creep)) return;
-
-    // 移动到目标房间.未到达房间不继续行动
-    if (creep.doubleMoveToRoom(creep.memory.targetRoom, '#ff0000')) return;
-
-    if (double_dismantle_action.dismantle(creep)) return;
 }
 
 export default double_dismantle;

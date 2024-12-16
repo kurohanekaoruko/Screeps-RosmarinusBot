@@ -1,5 +1,9 @@
 const outDefend = {
     target: function(creep: Creep) {
+        if (creep.room.name != creep.memory.targetRoom || creep.pos.isRoomEdge()) {
+            creep.moveToRoom(creep.memory.targetRoom);
+            return false;
+        }
         const hostileCreeps = creep.room.find(FIND_HOSTILE_CREEPS, {
             filter: (c) => !Memory['whitelist']?.includes(c.owner.username)
         });
@@ -61,13 +65,8 @@ const outDefend = {
             }
         }
 
-        if (creep.room.name != creep.memory.targetRoom) {
-            creep.moveToRoom(creep.memory.targetRoom);
-            return false;
-        }
-        if (creep.pos.x === 0 || creep.pos.x === 49 || creep.pos.y === 0 || creep.pos.y === 49) {
-            creep.moveToRoom(creep.room.name);
-            return false;
+        if (Game.time % 20 == 0) {
+            creep.suicide();
         }
 
         return false;

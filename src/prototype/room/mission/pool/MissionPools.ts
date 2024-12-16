@@ -211,10 +211,13 @@ export default class MissionPools extends Room {
         if (!tasks) { return; }
         if (!tasks.length) return; // 如果没有任务，不处理
 
-        const task = tasks.find(t => t.id === id);
-        if (!task) { console.log(`任务 ${id} 不存在`); return;}
+        const taskIndex = tasks.findIndex(t => t.id === id);
+        if (taskIndex == -1) { console.log(`任务 ${id} 不存在`); return;}
 
-        if (level !== undefined) task.level = level;
+        const task = Memory.MissionPools[this.name][type][taskIndex]
+        if (level !== undefined) {
+            task.level = level;
+        }
         if (data) {
             for(const key in data){
                 task.data[key] = data[key];

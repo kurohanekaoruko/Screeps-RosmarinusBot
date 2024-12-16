@@ -39,7 +39,7 @@ const outHarvest = {
         }
 
         // 向容器传输能量
-        if (creep.pos.inRangeTo(container, 1)) {
+        if (creep.pos.isEqualTo(container)) {
             let result = creep.transfer(container, RESOURCE_ENERGY);
             if (result == ERR_FULL) {
                 this.handleFullContainer(creep, container);
@@ -106,6 +106,20 @@ const outHarvest = {
             return;
         }
 
+        if (creep.pos.x <= 1) {
+            creep.move(RIGHT);
+            return;
+        } else if (creep.pos.x >= 48) {
+            creep.move(LEFT);
+            return;
+        } else if (creep.pos.y <= 1) {
+            creep.move(BOTTOM);
+            return;
+        } else if (creep.pos.y >= 48) {
+            creep.move(TOP);
+            return;
+        }
+
         // 如果还没有绑定采集点，则绑定一个
         if (!creep.memory.targetSourceId) {
             // 从绑定数量最少的采集点中寻找离Creep最近的
@@ -119,13 +133,14 @@ const outHarvest = {
             }
         }
 
-        let targetSource = Game.getObjectById(creep.memory.targetSourceId);
+        let targetSource = Game.getObjectById(creep.memory.targetSourceId) as Source;
         if(!targetSource) return;
         // 如果离采集点过远，则移动过去
         if (creep.pos.inRangeTo(targetSource, 1)) {
             creep.harvest(targetSource);
         }
         else {
+            if(targetSource.pos.findInRange(FIND_HOSTILE_CREEPS, 3).length > 0) return;
             creep.moveTo(targetSource);
         }
 

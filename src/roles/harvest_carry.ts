@@ -1,4 +1,4 @@
-const harvest = function (creep) {
+const harvest = function (creep: Creep) {
     const droppedEnergy = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES, {
         filter: (resource) => resource.resourceType === RESOURCE_ENERGY && resource.amount > 200
     });
@@ -33,7 +33,7 @@ const harvest = function (creep) {
     }
 
     // 检查spawn和tower是否需要补充能量
-    const st = creep.room.CheckSpawnAndTower()
+    const st = creep.room.CheckSpawnAndTower();
 
     const storage = creep.room.storage;
     const terminal = creep.room.terminal;
@@ -57,7 +57,7 @@ const harvest = function (creep) {
         }
     }
     else {
-        const targetSource = Game.getObjectById(creep.memory.targetSourceId);
+        const targetSource = Game.getObjectById(creep.memory.targetSourceId) as Source | null;
         if (targetSource && targetSource.energy > 0) {
             if (creep.harvest(targetSource) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(targetSource, { visualizePathStyle: { stroke: '#ffaa00' } });
@@ -67,7 +67,7 @@ const harvest = function (creep) {
 }
 
 const transfer = function (creep) {
-    let target = Game.getObjectById(creep.memory.cache.targetId);
+    let target = Game.getObjectById(creep.memory.cache.targetId) as StructureContainer | null;
 
     if (!target || target.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
         creep.memory.cache.targetId = null;
@@ -122,18 +122,18 @@ const transfer = function (creep) {
 }
 
 const HarvestCarryFunction = {
-    prepare: function (creep) {
+    prepare: function (creep: Creep) {
         const targetSource = creep.room.closestSource(creep);
         if (!targetSource) return false;
         creep.memory.targetSourceId = targetSource.id;
         return true;
     },
-    source: function (creep) {
+    source: function (creep: Creep) {
         if (!creep.moveHomeRoom()) return;
         harvest(creep);
         return creep.store.getFreeCapacity() === 0;
     },
-    target: function (creep) {
+    target: function (creep: Creep) {
         if (!creep.moveHomeRoom()) return;
         transfer(creep);
         return creep.store.getUsedCapacity() === 0;

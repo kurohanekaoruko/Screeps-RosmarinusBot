@@ -16,22 +16,16 @@ function CheckTerminalResAmount(room: Room) {
     // 自动调度资源阈值
     const THRESHOLD = {
         source: {
-            energy: 15000,
+            energy: 25000,
             default: 6000
         },
         target: {
-            energy: 10000,
+            energy: 20000,
             default: 4000
         }
     }
-    Object.keys(LabMap).forEach((r) => { THRESHOLD.source[r] = 15000; THRESHOLD.target[r] = 10000 } )
+    Object.keys(LabMap).forEach((r) => { THRESHOLD.source[r] = 12000; THRESHOLD.target[r] = 10000 } )
     Goods.forEach((r) => { THRESHOLD.source[r] = 1200; THRESHOLD.target[r] = 1000 } )
-
-    // 自动平衡资源排除项
-    const exclude: ResourceConstant[] = [
-        RESOURCE_METAL, RESOURCE_BIOMASS, RESOURCE_SILICON, RESOURCE_MIST,
-        RESOURCE_COMPOSITE, RESOURCE_CRYSTAL, RESOURCE_LIQUID
-    ];
 
     // 检查终端自动转入
     for (const resourceType in room.storage.store) {
@@ -49,8 +43,6 @@ function CheckTerminalResAmount(room: Room) {
                 sendTotal[resourceType] - room.terminal.store[resourceType]
             )
         } else {
-            if(room.memory.AUTO_S2T === false) continue;
-            if(exclude.includes(resourceType as ResourceConstant)) continue;
             // 当终端资源不足时，将storage资源补充到终端
             const threshold = THRESHOLD.target[resourceType] || THRESHOLD.target.default;
             if (room.terminal.store[resourceType] >= threshold) continue;
@@ -65,16 +57,13 @@ function CheckTerminalResAmount(room: Room) {
 
     // 检查终端自动转出
     for (const resourceType in room.terminal.store) {
-        if(room.memory.AUTO_T2S === false) break;
         if(sendTotal[resourceType]) continue;
-        if(exclude.includes(resourceType as ResourceConstant)) continue;
         // 当终端资源过多，且storage有空间时，将终端多余资源转入storage
         const threshold = THRESHOLD.source[resourceType] || THRESHOLD.source.default;
         if(room.terminal.store[resourceType] <= threshold) continue;
 
         const amount = room.terminal.store[resourceType] - threshold;
         if(amount <= 0) continue;
-        if(room.storage.store.getFreeCapacity(resourceType as ResourceConstant) < amount) continue;
         room.ManageMissionAdd('t', 's', resourceType, amount);
     }
 }
@@ -82,7 +71,7 @@ function CheckTerminalResAmount(room: Room) {
 function CheckFactoryResAmount(room: Room) {
     const factory = room.factory;
     if (!factory) return;
-    const product = global.BotMem('structures', room.name, 'factoryProduct');
+    const product = Memory['StructControlData'][room.name].factoryProduct;
     let resourceType = product;
     if (!resourceType) return;
     const components = COMMODITIES[resourceType].components;
@@ -122,7 +111,7 @@ function CheckFactoryResAmount(room: Room) {
 function CheckPowerSpawnResAmount(room: Room) {
     const powerSpawn = room.powerSpawn;
     if (!powerSpawn) return;
-    let center = global.BotMem('rooms', room.name, 'center');
+    let center = Memory['RoomControlData'][room.name].center;
     let centerPos: RoomPosition;
     if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
     if (!centerPos || !room.powerSpawn.pos.inRangeTo(centerPos, 2)) return;

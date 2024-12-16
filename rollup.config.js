@@ -10,7 +10,7 @@ import commonjs from '@rollup/plugin-commonjs';
 import alias from '@rollup/plugin-alias';
 import { fileURLToPath } from 'url';
 import typescript from 'rollup-plugin-typescript2';
-// import terser from '@rollup/plugin-terser'; // 压缩代码
+import terser from '@rollup/plugin-terser'; // 压缩代码
 
 const isProduction = process.env.DEST === 'main';
 
@@ -33,10 +33,6 @@ const runCopy = () => {
             },
             {
                 src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
-                dest: config.copyPath
-            },
-            {
-                src: 'src/planner/dynamic/autoPlanner63.js',
                 dest: config.copyPath
             },
             {
@@ -89,16 +85,19 @@ export default {
                 replacement: path.resolve(__dirname, 'src')
             }]
         }),
+        // 压缩代码
+        isProduction && terser(),
+        // 复制依赖文件
         copy({
             targets: [
-                {
-                    src: 'src/planner/dynamic/autoPlanner63.js',
-                    dest: 'dist'
-                },
                 {
                     src: 'src/planner/dynamic/algo_wasm_priorityqueue.wasm',
                     dest: 'dist'
                 },
+                // {
+                //     src: 'src/modules/调用栈分析器.js',
+                //     dest: 'dist'
+                // }
             ]
         }),
         // 执行上传或者复制

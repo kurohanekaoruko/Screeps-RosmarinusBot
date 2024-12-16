@@ -3,25 +3,25 @@ export default {
         // 开启powerSpawn
         open(roomName: string) {
             const room = Game.rooms[roomName];
-            const BotMemStructures =  global.BotMem('structures');
+            const BotMemStructures =  Memory['StructControlData'];
             if(!room || !room.my || !BotMemStructures[roomName]) {
                 global.log(`房间 ${roomName} 不存在、未拥有或未添加。`);
                 return;
             }
             BotMemStructures[roomName]['powerSpawn'] = true;
-            global.log(`已开启${roomName}的powerSpawn。`);
+            global.log(`已开启${roomName}的烧power。`);
             return OK;
         },
         // 关闭powerSpawn
         stop(roomName: string) {
             const room = Game.rooms[roomName];
-            const BotMemStructures =  global.BotMem('structures');
+            const BotMemStructures =  Memory['StructControlData'];
             if(!room || !room.my || !BotMemStructures[roomName]) {
                 console.log(`房间 ${roomName} 不存在、未拥有或未添加。`);
                 return;
             }
             BotMemStructures[roomName]['powerSpawn'] = false;
-            global.log(`已关闭${roomName}的powerSpawn。`);
+            global.log(`已关闭${roomName}的烧power。`);
             return OK;
         },
         // 孵化powerCreep
@@ -46,8 +46,8 @@ export default {
             return OK;
         },
         setpc(pcname: string, roomName: string) {
-            const pcMem = global.BotMem('powerCreep');
-            pcMem[pcname] = roomName;
+            if(!Memory['powerCreeps'][pcname]) Memory['powerCreeps'][pcname] = {};
+            Memory['powerCreeps'][pcname]['spawnRoom'] = roomName;
             console.log(`已设置 PowerCreep 【${pcname}】 的孵化房间为 ${roomName}`);
             return OK;
         }

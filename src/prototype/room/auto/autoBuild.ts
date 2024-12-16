@@ -3,18 +3,19 @@ import {compress,decompress} from "@/utils"
 export default class AutoBuild extends Room {
     // 自动建筑
     autoBuild() {
-        if (Game.time % 100 == 0)
-            this.memory['index'] = Object.keys(Game.rooms).indexOf(this.name);
+        if (Game.time % 100 == 0) {
+            this.memory['index'] = Object.keys(Game.rooms).indexOf(this.name) % 100;
+        }
         
         if (Game.time % 100 !== this.memory['index']) return;
         if (Game.cpu.bucket < 100) return;
 
         // 开启了自动建造, 且有布局Memory, 则自动建筑
-        const memory = global.BotMem('rooms', this.name);
-        const layoutMemory = global.BotMem('layout', this.name);
+        const memory = Memory['RoomControlData'][this.name];
+        const layoutMemory = Memory['LayoutData'][this.name];
         if(!memory) return;
-        if (memory.autobuild &&
-            layoutMemory && Object.keys(layoutMemory).length) {
+        if (memory.autobuild && layoutMemory &&
+            Object.keys(layoutMemory).length) {
             plannerCreateSite(this, layoutMemory);
         }
     }
@@ -30,12 +31,13 @@ const plannerCreateSite = function (room: Room, layoutMemory: any) {
         // 当前RCL能造的数量为最大建造数
         const buildMax = CONTROLLER_STRUCTURES[s][room.level];
         if (!buildMax) continue;
-        // 建筑计数
-        let count = 0;
-        if (s == 'extension' || s == 'container') {
+        
+        // 对于部分建筑, 如果数量达到上限，则跳过
+        if (s == 'extension' || s == 'container' || s == 'link')  {
+            // 建筑计数
+            let count = 0;
             let structures = room[s] || room.find(FIND_STRUCTURES, { filter: (o) => o.structureType == s });
-            // 如果数量达到上限，则跳过
-            count = structures.length
+            count = structures.length;
             if (count >= buildMax) continue;
             // 算上工地数再判断一次
             const sites = allSite.filter(o => o.structureType == s);
@@ -52,25 +54,12 @@ const plannerCreateSite = function (room: Room, layoutMemory: any) {
             const C = Pos.lookFor(LOOK_CONSTRUCTION_SITES);
             if (C.length) continue; // 已有工地跳过
             const S = Pos.lookFor(LOOK_STRUCTURES);
+            // 关键建筑位置造rampart
+            buildRampart(room, s, S, Pos);
             // 检查是否跳过该位置的建造
             if (checkSkipBuild(room, s, S, Pos)) continue;
             const result = room.createConstructionSite(x, y, s as any);
-            if (result == OK) count++;
-            else if (result == ERR_FULL) return;
-            if (count >= buildMax) break;
-        }
-    }
-    // 中心点造墙
-    if (room.level >= 6) {
-        const center = global.BotMem('rooms', room.name).center;
-        if (center) {
-            const x = center.x, y = center.y;
-            const Pos = new RoomPosition(x, y, room.name);
-            const C = Pos.lookFor(LOOK_CONSTRUCTION_SITES);
-            if (C.length) return; // 已有工地跳过
-            const S = Pos.lookFor(LOOK_STRUCTURES).filter(o => o.structureType == 'rampart');
-            if (S.length) return; // 已有墙跳过
-            room.createConstructionSite(x, y, 'rampart');
+            if (result == ERR_FULL) return;
         }
     }
 }
@@ -79,7 +68,8 @@ const plannerCreateSite = function (room: Room, layoutMemory: any) {
 function getPoints(room: Room, structureType: string, layoutArray: any, buildMax: number) {
     if (structureType == 'road') {
         // 对于路则使用如下判断来限制
-        switch (global.BotMem('rooms', room.name, 'layout')) {
+        const layoutType = Memory['LayoutData'][room.name]['layout'];
+        switch (layoutType) {
             case 'tea':
                 if (room.level < 3) return [];   // 3级以下不建造路
                 if (room.level == 3) return layoutArray.slice(0, 11);
@@ -117,11 +107,21 @@ function getPoints(room: Room, structureType: string, layoutArray: any, buildMax
 }
 
 // 关键建筑表
-const mainStructMap = ['spawn', 'tower', 'storage', 'link', 'terminal', 'factory', 'lab', 'observer', 'nuker', 'powerSpawn']
+const mainStructMap = ['spawn', 'tower', 'storage', 'terminal', 'factory', 'lab', 'nuker', 'powerSpawn'];
+
+// 对于关键建筑, 在所在位置建造rampart
+function buildRampart(room: Room, structureType: string, LOOK_S: Structure<StructureConstant>[], Pos: RoomPosition) {
+    if (room.level < 4) return; // 4级以下不建造墙
+    if (!mainStructMap.includes(structureType)) return;
+    if (LOOK_S.some(o => o.structureType == 'rampart')) return;
+    if (LOOK_S.every(o => o.structureType !== structureType)) return;
+    room.createConstructionSite(Pos.x, Pos.y, 'rampart');
+    return;
+}
+
 
 // 检查建筑所在位置的情况, 决定是否跳过建造
 function checkSkipBuild(room: Room, structureType: string, LOOK_S: Structure<StructureConstant>[], Pos: RoomPosition) {
-    const layoutMemory = global.BotMem('layout', room.name);
     switch (structureType) {
         case 'rampart':
             // 位置没建筑可以造
@@ -147,39 +147,9 @@ function checkSkipBuild(room: Room, structureType: string, LOOK_S: Structure<Str
             if (sources[0] && Pos.inRangeTo(sources[0], 2)) return true;
             if (sources[1] && Pos.inRangeTo(sources[1], 2)) return true;
             break;
-        case 'link':
-            // 位置没建筑可以造
-            if (!LOOK_S.length) return false;
-            const center = global.BotMem('rooms', room.name, 'center');
-            // 在中心点旁边的link, 如果已有该建筑，先处理是否需要造墙再跳过
-            if (center && Pos.inRangeTo(center.x, center.y, 1) &&
-                LOOK_S.some(o => o.structureType == structureType)) {
-                if (room.level < 4) return true;
-                if (LOOK_S.some(o => o.structureType == 'rampart')) return true;
-                if (!layoutMemory['rampart'].includes(compress(Pos.x, Pos.y))) {
-                    room.createConstructionSite(Pos.x, Pos.y, 'rampart');
-                    layoutMemory['rampart'].push(compress(Pos.x, Pos.y));
-                }
-                return true;
-            }
-            // 有非墙非路建筑，则跳过
-            if (LOOK_S.some(o => o.structureType != 'rampart' &&
-                o.structureType != 'road')) return true;
-            break;
         default:
             // 位置没建筑可以造
             if (!LOOK_S.length) return false;
-            // 对于关键建筑，如果已有该建筑，先处理是否需要造墙再跳过
-            if (mainStructMap.includes(structureType) &&
-                LOOK_S.some(o => o.structureType == structureType)) {
-                if (room.level < 4) return true;
-                if (LOOK_S.some(o => o.structureType == 'rampart')) return true;
-                if (!layoutMemory['rampart'].includes(compress(Pos.x, Pos.y))) {
-                    room.createConstructionSite(Pos.x, Pos.y, 'rampart');
-                    layoutMemory['rampart'].push(compress(Pos.x, Pos.y));
-                }
-                return true;
-            }
             // 有非墙非路建筑，则跳过
             if (LOOK_S.some(o => o.structureType != 'rampart' &&
                 o.structureType != 'road')) return true;

@@ -3,10 +3,23 @@
  */
 export default class MissionGet extends Room {
     getTransportMission(creep: Creep) {
+        if(!this.checkMissionInPool('transport')) return null;
+
         const posInfo = `${creep.pos.x}/${creep.pos.y}/${creep.pos.roomName}`
 
         const task = this.getMissionFromPool('transport', posInfo);
         if(!task) return null;
+
+        const source = Game.getObjectById(task.data.source) as any;
+        const target = Game.getObjectById(task.data.target) as any;
+        const resourceType = task.data.resourceType;
+        const amount = task.data.amount;
+        if(!source || !target || !resourceType || !amount ||
+            source.store[resourceType] == 0 ||
+            target.store.getFreeCapacity(resourceType) == 0) {
+            this.deleteMissionFromPool('transport',task.id);
+            return this.getTransportMission(creep);
+        }
 
         this.lockMissionInPool('transport',task.id, creep.id);
 
@@ -75,11 +88,10 @@ export default class MissionGet extends Room {
     }
 
     // 获取孵化任务
-    getSpawnMission() {
-        const energy = this.energyAvailable;
+    getSpawnMission(energyAvailable: number) {
         const checkFunc = (task: Task) => {
             const data = task.data as SpawnTask;
-            return energy >= data.energy;
+            return (energyAvailable||0) >= (data.energy||0);
         }
         const task = this.getMissionFromPool('spawn', checkFunc);
         if(!task) return null;

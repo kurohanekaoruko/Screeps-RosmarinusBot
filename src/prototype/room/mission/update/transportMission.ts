@@ -67,8 +67,27 @@ function UpdateEnergyMission(room: Room) {
     // 能量缺少时不填充以下的
     if(room.getResourceAmount(RESOURCE_ENERGY) < 10000) return;
 
+    // 检查lab是否需要填充能量
+    if (Game.time % 20 === 0 && room.level >= 6 && room.lab) {
+        const labs = room.lab
+            .filter((l: StructureLab) => l && l.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
+        labs.forEach((l: StructureLab) => {
+            if(energy < l.store.getFreeCapacity(RESOURCE_ENERGY)) return;
+            energy -= l.store.getFreeCapacity(RESOURCE_ENERGY);
+            const posInfo = `${l.pos.x}/${l.pos.y}/${l.pos.roomName}`;
+            const taskdata = {
+                pos: posInfo,
+                source: storage.id,
+                target: l.id,
+                resourceType: RESOURCE_ENERGY,
+                amount: l.store.getFreeCapacity(RESOURCE_ENERGY),
+            }
+            room.TransportMissionAdd(0, taskdata)
+        })
+    }
+
     // 检查powerSpawn是否需要填充能量
-    let center = global.BotMem('rooms', room.name, 'center');
+    let center = Memory['RoomControlData'][room.name].center;
     let centerPos: RoomPosition;
     if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
     // 没设置中心或者powerSpawn不在中心时填充
@@ -88,25 +107,6 @@ function UpdateEnergyMission(room: Room) {
             }
             room.TransportMissionAdd(1, taskdata)
         }
-    }
-
-    // 检查lab是否需要填充能量
-    if (Game.time % 20 === 0 && room.level >= 6 && room.lab) {
-        const labs = room.lab
-            .filter((l: StructureLab) => l && l.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
-        labs.forEach((l: StructureLab) => {
-            if(energy < l.store.getFreeCapacity(RESOURCE_ENERGY)) return;
-            energy -= l.store.getFreeCapacity(RESOURCE_ENERGY);
-            const posInfo = `${l.pos.x}/${l.pos.y}/${l.pos.roomName}`;
-            const taskdata = {
-                pos: posInfo,
-                source: storage.id,
-                target: l.id,
-                resourceType: RESOURCE_ENERGY,
-                amount: l.store.getFreeCapacity(RESOURCE_ENERGY),
-            }
-            room.TransportMissionAdd(1, taskdata)
-        })
     }
 
     // 检查nuker是否需要填充能量
@@ -133,7 +133,7 @@ function UpdateEnergyMission(room: Room) {
 // 检查powerSpawn是否需要填充power
 function UpdatePowerMission(room: Room) {
     if(room.level < 8 || !room.powerSpawn) return;
-    let center = global.BotMem('rooms', room.name, 'center');
+    let center = Memory['RoomControlData'][room.name].center;
     let centerPos: RoomPosition;
     if (center) centerPos = new RoomPosition(center.x, center.y, room.name);
     if (centerPos && room.powerSpawn.pos.inRangeTo(centerPos, 2)) return;
@@ -168,10 +168,31 @@ function UpdateLabMission(room: Room) {
     const storage = room.storage;
     const terminal = room.terminal;
     if (!storage) return;
-    const BotMemStructures =  global.BotMem('structures', room.name);
-    if (!BotMemStructures.lab || room.memory.defend) return;    // lab关停时不进行操作
-    if (!BotMemStructures.labA || !BotMemStructures.labB ||
-        !BotMemStructures.labAtype || !BotMemStructures.labBtype) return;
+    if(!room.lab || room.lab.length === 0) return;
+
+    const BotMemStructures =  Memory['StructControlData'][room.name];
+    if (!BotMemStructures['boostRes']) BotMemStructures['boostRes'] = {};
+    if (!BotMemStructures['boostTypes']) BotMemStructures['boostTypes'] = {};
+
+    // lab关停时取出所有资源, 不包括boost
+    if (!BotMemStructures.lab || !BotMemStructures.labA || !BotMemStructures.labB ||
+        !BotMemStructures.labAtype || !BotMemStructures.labBtype) {
+        room.lab.forEach(lab => {
+            if(BotMemStructures['boostRes'][lab.id]) return;
+            if(BotMemStructures['boostTypes'][lab.id]) return;
+            if (!lab.store[lab.mineralType] || lab.store[lab.mineralType] === 0) return;
+            const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
+            const taskdata = {
+                pos: posInfo,
+                source: lab.id,
+                target: storage.id,
+                resourceType: lab.mineralType,
+                amount: lab.store[lab.mineralType],
+            }
+            room.TransportMissionAdd(2, taskdata);
+        })
+        return;
+    }
     const labA = Game.getObjectById(BotMemStructures.labA) as StructureLab;
     const labB = Game.getObjectById(BotMemStructures.labB) as StructureLab;
     const labAtype = BotMemStructures.labAtype;
@@ -200,10 +221,7 @@ function UpdateLabMission(room: Room) {
         if(lab.store.getFreeCapacity(type) < 1000) return;   // 需要填充的量太少时不添加任务
         if(room.getResourceAmount(type) < 1000) return; // 资源不足时不添加任务
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
-        const target = [storage, terminal].reduce((prev, cur) => {
-            if(prev.store[type] >= cur.store[type]) return prev;
-            return cur;
-        })
+        const target = [storage, terminal].find(target => target.store[type] > 0);
         const taskdata = {
             pos: posInfo,
             source: target.id,
@@ -214,15 +232,15 @@ function UpdateLabMission(room: Room) {
         room.TransportMissionAdd(2, taskdata)
     });
 
-    if(!room.lab || room.lab.length === 0) return;
-
-    const botmem = global.BotMem('structures', room.name, 'boostTypes');
+    const boostmem = BotMemStructures['boostRes'];
+    const boostmem2 = BotMemStructures['boostTypes'];
 
     // 从已满的lab中取出产物到storage（不包括labA、labB，以及设定了boost的）
     const Labs = room.lab.filter(lab => lab);
     Labs.forEach(lab => {
-        if (lab.id === labA.id || lab.id === labB.id || botmem[lab.id]) return;
-        if (!lab.store[lab.mineralType] || lab.store[lab.mineralType] === 0) return;
+        if (lab.id === labA.id || lab.id === labB.id ||
+            boostmem[lab.id] || boostmem2[lab.id]) return;
+        if (!lab.store[lab.mineralType] || lab.store[lab.mineralType] == 0) return;
         if (lab.store.getFreeCapacity(lab.mineralType) >= 100) return;
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
         const taskdata = {
@@ -237,9 +255,10 @@ function UpdateLabMission(room: Room) {
 
     // 如果lab的资源不同于产物，则全部取出（不包括labA、labB，以及设定了boost的）
     Labs.forEach(lab => {
-        if(lab.id === labA.id || lab.id === labB.id || botmem[lab.id]) return;
-        if(lab.mineralType === REACTIONS[labAtype][labBtype]) return;
-        if(!lab.store[lab.mineralType] || lab.store[lab.mineralType] === 0) return;
+        if(lab.id === labA.id || lab.id === labB.id ||
+            boostmem[lab.id] || boostmem2[lab.id]) return;
+        if(lab.mineralType == REACTIONS[labAtype][labBtype]) return;
+        if(!lab.store[lab.mineralType] || lab.store[lab.mineralType] == 0) return;
         const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
         const taskdata = {
             pos: posInfo,
@@ -258,18 +277,62 @@ function UpdateLabBoostMission(room: Room) {
     const terminal = room.terminal;
     if (!storage && !terminal) return;
     
-    const botmem =  global.BotMem('structures', room.name);
-    if (!botmem['boostTypes']) return;
+    const botmem = Memory['StructControlData'][room.name];
+    if (!botmem['boostRes']) return;
 
     if (!room.lab || room.lab.length === 0) return;
 
     const Labs = room.lab.filter(lab => lab);
+
+    // 把boost队列更新到空余lab中
+    if (!botmem['boostResQueue']) botmem['boostResQueue'] = {};
+    if (Object.keys(botmem['boostResQueue']).length) {
+        // 筛选出没有分配boost的lab, 排除底物lab
+        Labs.filter(lab => !botmem['boostRes'][lab.id] &&
+            lab.id !== botmem.labA && lab.id !== botmem.labB)
+            .forEach(lab => {
+            const boostType = Object.keys(botmem['boostResQueue'])[0];
+            botmem['boostRes'][lab.id] = {
+                mineral: boostType,
+                amount: botmem['boostResQueue'][boostType],
+            }
+            delete botmem['boostResQueue'][boostType];
+        })
+    }
+
+    // 根据分配的boost类型与数量填充lab
     Labs.forEach(lab => {
-        const boostType = botmem['boostTypes'][lab.id];
+        let boostType = botmem['boostRes'][lab.id]?.mineral;
+        if(boostType) {
+            // 资源设定不正确那么删除
+            if (!RESOURCES_ALL.includes(boostType)) {
+                delete botmem['boostRes'][lab.id];
+                return;
+            }
+            // 如果该lab是底物lab, 那么不填充, 同时删除
+            if (lab.id == botmem.labA || lab.id == botmem.labB) {
+                delete botmem['boostRes'][lab.id];
+                return;
+            }
+            // 如果boost剩余任务量为0，则删除
+            if ((botmem['boostRes'][lab.id].amount||0) <= 0) {
+                delete botmem['boostRes'][lab.id];
+                return;
+            }
+            // 库存余量不足，则修改boost剩余任务量
+            const resTotalAmount = room.storage.store[boostType] + room.terminal.store[boostType] +
+                        room.lab.reduce((a, b) => a + (b.store[boostType] || 0), 0) +
+                        room.find(FIND_MY_CREEPS).reduce((a, b) => a + (b.store[boostType] || 0), 0);
+            if (botmem['boostRes'][lab.id].amount > resTotalAmount) {
+                botmem['boostRes'][lab.id].amount = resTotalAmount;
+            }
+        } else {
+            boostType = botmem['boostTypes'][lab.id];
+        }
+
         // 如果没有设定boost，则不填充
         if(!boostType) return;
-        // 如果处于开启合成状态，并且该lab是底物lab，那么不填充
-        if (botmem.lab && (lab.id == botmem.labA || lab.id == botmem.labB)) return;
+        
         // 如果lab中存在非设定的资源，则搬走
         if(lab.mineralType !== boostType && lab.store[lab.mineralType] > 0) {
             const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
@@ -280,21 +343,22 @@ function UpdateLabBoostMission(room: Room) {
                 resourceType: lab.mineralType,
                 amount: lab.store[lab.mineralType],
             }
-            room.TransportMissionAdd(2, taskdata)
+            room.TransportMissionAdd(0, taskdata)
             return;
         }
-        
-        if(!boostType || !RESOURCES_ALL.includes(boostType)) return;
 
+        let totalAmount = 0;
+        if (botmem['boostRes'][lab.id]) {
+            totalAmount = Math.min(3000, botmem['boostRes'][lab.id].amount);
+        } else {
+            totalAmount = 3000;
+        }
         // 如果设定的资源不足，则补充
-        if(lab.store.getUsedCapacity(boostType) < 2500) {
-            const amount = 3000 - lab.store[boostType];
-            if (room.getResourceAmount(boostType) < 1000) return;
-            const target = [storage, terminal].reduce((prev, cur) => {
-                if(prev.store[boostType] >= cur.store[boostType]) return prev;
-                return cur;
-            })
+        if(lab.store[boostType] < totalAmount) {
+            const amount = totalAmount - lab.store[boostType];
+            const target = [storage, terminal].find(t => t.store[boostType] > 0);
             const posInfo = `${lab.pos.x}/${lab.pos.y}/${lab.pos.roomName}`;
+            if (!target) return;
             const taskdata = {
                 pos: posInfo,
                 source: target.id,
@@ -302,12 +366,13 @@ function UpdateLabBoostMission(room: Room) {
                 resourceType: boostType,
                 amount: Math.min(amount, target.store[boostType])
             }
-            room.TransportMissionAdd(2, taskdata)
+            room.TransportMissionAdd(0, taskdata)
+            return;
         }
     });
 }
 
-// 填充nuket用的资源
+// 填充nuker用的资源
 function UpdateNukerMission(room: Room) {
     if(Game.time % 50 !== 0) return;
     if(room.level < 8) return;

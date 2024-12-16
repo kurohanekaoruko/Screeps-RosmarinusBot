@@ -5,6 +5,7 @@ const outCarryMove = function(creep: Creep, target: any, options: any) {
         options['maxRooms'] = 1;
     }
     options['range'] = 1;
+    options['avoid'] = creep['avoidCache'];
     creep.moveTo(target, options)
 }
 
@@ -14,6 +15,19 @@ const outCarry = {
             creep.moveToRoom(creep.memory.targetRoom);
             return;
         }
+
+        const npcs = creep.pos.findInRange(FIND_HOSTILE_CREEPS, 1, {
+            filter: (c) => c.owner.username === 'Source Keeper'
+        });
+        const avoidArray = [];
+        for (const npc of npcs) {
+            for(let i = -3; i <= 3; i++) {
+                for(let j = -3; j <= 3; j++) {
+                    avoidArray.push(new RoomPosition(npc.pos.x + i, npc.pos.y + j, npc.pos.roomName));
+                }
+            }
+        }
+        creep['avoidCache'] = avoidArray;
         
         if (creep.memory.cache.targetId) {
             let target = Game.getObjectById(creep.memory.cache.targetId) as any;
@@ -43,48 +57,45 @@ const outCarry = {
                 return;
             }
 
-            if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
-                const nearbyCarrier = creep.pos.findInRange(FIND_MY_CREEPS, 1, {
-                    filter: c => c.memory.role === 'outer_carrier' && 
-                                 !c.pos.inRangeTo(target, 1) &&
-                                 c.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-                })[0];
-                if (nearbyCarrier) {
-                    creep.transfer(nearbyCarrier, RESOURCE_ENERGY);
-                    return;
-                }
-            }
-
             delete creep.memory.cache.targetId;
             delete creep.memory.cache.targetType;
         }
- 
-        const droppedResource = creep.pos.findClosestByRange(FIND_DROPPED_RESOURCES, {filter: (resource) => resource.amount > 100});
-        if (droppedResource) {
+
+        let container: StructureContainer;
+        const containers = creep.room.find(FIND_STRUCTURES, {
+            filter: (s) => s.structureType === STRUCTURE_CONTAINER &&
+                    s.store.getUsedCapacity() > 500 &&
+                    Object.values(Memory.creeps).every((m) => 
+                        (m.role != 'out-carry' && m.role != 'out-car') ||  m.cache?.targetId !== s.id)
+        }) as StructureContainer[];
+        // 先找mineral旁边的container
+        if (creep.room.mineral) {
+            const mineralContainer = containers.find((container) =>
+                container.pos.inRangeTo(creep.room.mineral, 2));
+            if (mineralContainer) {
+                container = mineralContainer;
+                creep.memory.cache.targetId = container.id;
+                creep.memory.cache.targetType = 'container';
+                outCarryMove(creep, container, { visualizePathStyle: { stroke: '#ffaa00' } });
+                return;
+            }
+        }
+        // 再找掉落资源
+        const droppedResources = creep.room.find(FIND_DROPPED_RESOURCES, 
+            {filter: (resource) => resource.amount > 500});
+        if (droppedResources && droppedResources.length > 0) {
+            const droppedResource = droppedResources.reduce((a, b) => {
+                if (a.resourceType !== RESOURCE_ENERGY && b.resourceType === RESOURCE_ENERGY) return a;
+                if (b.resourceType !== RESOURCE_ENERGY && a.resourceType === RESOURCE_ENERGY) return b;
+                return a.amount < b.amount ? b : a
+            });
             creep.memory.cache.targetId = droppedResource.id;
             creep.memory.cache.targetType = 'dropped';
             outCarryMove(creep, droppedResource, { visualizePathStyle: { stroke: '#ffaa00' } });
             return;
         }
-
-        const ruins = creep.room.find(FIND_RUINS, { filter: (ruin) => ruin && ruin.store.getUsedCapacity() > 0});
-        if (ruins.length > 0) {
-            const target = creep.pos.findClosestByRange(ruins);
-            creep.memory.cache.targetId = target.id;
-            creep.memory.cache.targetType = 'ruin';
-            outCarryMove(creep, target, { visualizePathStyle: { stroke: '#ffaa00' } });
-            return;
-        }
-    
-        let container;
-        const containers = creep.room.find(FIND_STRUCTURES, {
-            filter: (structure) => structure.structureType === STRUCTURE_CONTAINER &&
-                                    structure.store.getUsedCapacity() > 100
-        });
-        if (containers.length > 0) {
-            container = creep.pos.findClosestByRange(containers);
-        }
-        
+        // 再找能量container
+        container = creep.pos.findClosestByRange(containers||[]);
         if (container) {
             creep.memory.cache.targetId = container.id;
             creep.memory.cache.targetType = 'container';
@@ -92,7 +103,7 @@ const outCarry = {
             return;
         }
 
-        // 查找墓碑，优先级最低
+        // 最后查找墓碑，优先级最低
         const tombstones = creep.room.find(FIND_TOMBSTONES, {
             filter: (tombstone) => tombstone.store.getUsedCapacity() > 0
         });
@@ -115,7 +126,17 @@ const outCarry = {
             }
         }
 
-        // 如果没有可以拿的资源，移动到最近的out-harvest身边
+        // 如果没有可以拿的资源，移动到最近的out-harvest身边，或者out-miner身边
+        // 优先miner
+        const nearestMiner = creep.pos.findClosestByRange(FIND_MY_CREEPS, {
+            filter: (c) => c.memory.role === 'out-miner'
+        });
+        if (nearestMiner) {
+            if(!creep.pos.inRangeTo(nearestMiner, 1) || nearestMiner.store.getUsedCapacity() > 0) {
+                outCarryMove(creep, nearestMiner, { visualizePathStyle: { stroke: '#ffaa00' }, ignoreCreeps: false });
+            }
+            return;
+        }
         const nearestHarvester = creep.pos.findClosestByRange(FIND_MY_CREEPS, {
             filter: (c) => c.memory.role === 'out-harvest'
         });
@@ -138,6 +159,7 @@ const outCarry = {
     },
 
     checkAndFillNearbyExtensions: function(creep: any) {
+        if(creep.store[RESOURCE_ENERGY] == 0) return false;
         const { pos, room, store, memory } = creep;
         
         if (store[RESOURCE_ENERGY] <= 50 || creep.fatigue > 0 || !room.storage || pos.getRangeTo(room.storage) > 10) {
@@ -180,13 +202,8 @@ const outCarry = {
     },
     
     carry: function(creep: any) {
-        if (creep.room.name != creep.memory.homeRoom) {
+        if (creep.room.name != creep.memory.homeRoom || creep.pos.isRoomEdge()) {
             creep.moveToRoom(creep.memory.homeRoom);
-            return;
-        }
-        
-        if (creep.pos.isRoomEdge()) {
-            creep.moveToRoom(creep.room.name);
             return;
         }
 
@@ -215,9 +232,8 @@ const outCarry = {
             const targets = [];
             if (creep.room.container && creep.room.container.length > 0) {
                 let containers = creep.room.container
-                                .filter(c => c && c.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
-                                                  !c.pos.inRangeTo(creep.room.mineral, 2) &&
-                                                  !c.pos.inRangeTo(creep.room.controller, 2));
+                        .filter(c => c && c.store.getFreeCapacity(RESOURCE_ENERGY) > 0 &&
+                        !c.pos.inRangeTo(creep.room.mineral, 2) && !c.pos.inRangeTo(creep.room.controller, 2));
                 if (containers.length > 0) {
                     targets.push(...containers);
                 }
@@ -245,8 +261,10 @@ const outCarry = {
         }
     },
 
-    roadRepair: function(creep) {
+    buildRepair: function(creep) {
+        if(creep.room.name == creep.memory.homeRoom) return false;
         if(creep.memory.role !== 'out-car') return false;
+        if(creep.store[RESOURCE_ENERGY] == 0) return false;
         const roads = creep.pos.findInRange(FIND_STRUCTURES, 3, {
             filter: (structure) => {
                 return structure.structureType == STRUCTURE_ROAD && structure.hits < structure.hitsMax * 0.8;
@@ -261,11 +279,7 @@ const outCarry = {
             if(result == OK) return true;
             if(result == ERR_NOT_IN_RANGE) { creep.moveTo(road); return true; }
         }
-        const roadSite = creep.pos.findInRange(FIND_CONSTRUCTION_SITES, 3, {
-            filter: (site) => {
-                return site.structureType == STRUCTURE_ROAD;
-            }
-        })
+        const roadSite = creep.room.find(FIND_CONSTRUCTION_SITES)
         if (roadSite.length > 0) {
             const site = creep.pos.findClosestByRange(roadSite);
             const result = creep.build(site)
@@ -280,47 +294,60 @@ const outCarry = {
 
     createSite: function(creep: any) {
         if (creep.memory.role !== 'out-car') return;
+        if (creep.room.name !== creep.memory.targetRoom) return;
+        if (!creep.pos.isRoomEdge()) return;
+        if (creep.room.memory.road && creep.room.memory.road.length > 0) return;
+        creep.room.memory.road = [];
+        const AllPath = [];
+        const pos = [];
+        const sourcePos = creep.room.find(FIND_SOURCES);
+        for (const source of sourcePos) {
+            pos.push(source.pos);}
+        const mineralPos = creep.room.find(FIND_MINERALS)[0];
+        if (mineralPos) pos.push(mineralPos.pos);
+        const closestPos = creep.pos.findClosestByRange(pos);
+        const path = creep.room.findPath(creep.pos, closestPos, {
+            ignoreCreeps: true,
+            ignoreRoads: true,
+            maxRooms: 1,
+            range: 1,
+        });
+        AllPath.push(...path);
+        for (let i = 0; i < pos.length; i++) {
+            for (let j = i+1; j < pos.length; j++) {
+                AllPath.push(...(creep.room.findPath(pos[i], pos[j], {
+                    ignoreCreeps: true,
+                    ignoreRoads: true,
+                    maxRooms: 1,
+                    range: 1,
+                })));
+            }
+        }
+        for (const p of AllPath) {
+            const xy = compress(p.x, p.y);
+            if (creep.room.memory.road.includes(xy)) continue;
+            creep.room.createConstructionSite(p.x, p.y, STRUCTURE_ROAD);
+            creep.room.memory.road.push(xy);
+        }
+    },
+    
+    target: function(creep: Creep) {
+        if (this.buildRepair(creep)) return;
+        if (creep.room.name == creep.memory.targetRoom &&
+            creep.store.getUsedCapacity() < creep.store.getCapacity() / 2) return true;
+        this.carry(creep);
         if (creep.room.name !== creep.memory.homeRoom &&
             creep.room.name !== creep.memory.targetRoom &&
             creep.fatigue > 0) {
             creep.room.createConstructionSite(creep.pos, STRUCTURE_ROAD);
         }
-        if (creep.room.name !== creep.memory.targetRoom) return;
-        if (!creep.pos.isRoomEdge()) return;
-        if (creep.room.memory.road && creep.room.memory.road.length > 0) return;
-        creep.room.memory.road = [];
-        const pos = [creep.pos];
-        const sourcePos = creep.room.find(FIND_SOURCES);
-        for (const source of sourcePos) {
-            pos.push(source.pos);
-        }
-        for (let i = 0; i < pos.length; i++) {
-            for (let j = i; j < pos.length; j++) {
-                if (i == j) continue;
-                const path = creep.room.findPath(pos[i], pos[j], {
-                    ignoreCreeps: true,
-                    ignoreRoads: true,
-                    maxRooms: 1,
-                    range: 1,
-                });
-                for (const p of path) {
-                    creep.room.createConstructionSite(p.x, p.y, STRUCTURE_ROAD);
-                    const xy = compress(p.x, p.y);
-                    if (creep.room.memory.road.includes(xy)) continue;
-                    creep.room.memory.road.push(xy);
-                }
-            }
-        }
-    },
-    
-    target: function(creep: Creep) {
-        if (this.roadRepair(creep)) return;
-        if (creep.store.getUsedCapacity() < creep.store.getCapacity() / 2) return true;
-        this.carry(creep);
         return creep.store.getUsedCapacity() === 0;
     },
     
     source: function(creep: Creep) {
+        if (creep.hits < (creep.memory.cache['hits']||creep.hits) &&
+            creep.store.getUsedCapacity() > 0) return true;
+        creep.memory.cache['hits'] = creep.hits;
         this.withdraw(creep);
         this.createSite(creep);
         return creep.store.getFreeCapacity() === 0;

@@ -11,7 +11,7 @@ export default class BaseFunction extends PowerCreep {
     transferOPS(): boolean {
         if (this.store.getFreeCapacity() === 0 && this.store[RESOURCE_OPS] > 200) {
             const halfOps = Math.floor(this.store[RESOURCE_OPS] / 2);
-            const amount = Math.max(halfOps, this.store[RESOURCE_OPS] - 200);
+            const amount = Math.min(halfOps, this.store[RESOURCE_OPS] - 200);
             if (amount <= 0) return false;
             if (this.pos.isNearTo(this.room.storage)) {
                 this.transfer(this.room.storage, RESOURCE_OPS, amount);
@@ -65,7 +65,8 @@ export default class BaseFunction extends PowerCreep {
         return false;
     }
     transferPower() {
-        if(!global.BotMem('structures', this.room.name).powerSpawn) return false;
+        const mem = Memory['StructControlData'][this.room.name];
+        if(!mem || !mem.powerSpawn) return false;
 
         const powerSpawn = this.room.powerSpawn;
         if (!powerSpawn) return;

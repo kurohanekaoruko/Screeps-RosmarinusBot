@@ -35,7 +35,7 @@ const double_attack_action = {
             if(creep.pos.inRangeTo(targetEnemy, 1)) {
                 creep.attack(targetEnemy); // 优先攻击敌人
             } else {
-                creep.doubleMove(targetEnemy, '#ff0000');
+                creep.doubleMove(targetEnemy.pos, '#ff0000');
             }
             return true;
         }
@@ -45,33 +45,35 @@ const double_attack_action = {
 }
 
 /** 双人小队 进攻小队 */
-const double_attack = function (creep: Creep) {
-    if (!creep.memory.notified) {
-        creep.notifyWhenAttacked(false);
-        creep.memory.notified = true;
-    }
-    if (!creep.memory.boosted) {
-        const boosts = ['XGHO2', 'GHO2', 'GO', 'XUH2O', 'UH2O', 'UH', 'XZHO2', 'ZHO2', 'ZO'];
-        creep.memory.boosted = creep.goBoost(boosts);
-        return
-    }
-
-    // 等待绑定
-    if(!creep.memory.bind) return;
-
-    // 获取绑定的另一个creep
-    const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
-    if(!bindcreep) {
-        delete creep.memory.bind;
-        return;
-    }
-
-    if(double_attack_action.move(creep)) return;
-
-    // 移动到目标房间.未到达房间不继续行动
-    if (creep.doubleMoveToRoom(creep.memory.targetRoom, '#ff0000')) return;
+const double_attack = {
+    run: function (creep: Creep) {
+        if (!creep.memory.notified) {
+            creep.notifyWhenAttacked(false);
+            creep.memory.notified = true;
+        }
+        if (!creep.memory.boosted) {
+            const boosts = ['XGHO2', 'GHO2', 'GO', 'XUH2O', 'UH2O', 'UH', 'XZHO2', 'ZHO2', 'ZO'];
+            creep.memory.boosted = creep.goBoost(boosts);
+            return
+        }
     
-    if(double_attack_action.attack(creep)) return;
+        // 等待绑定
+        if(!creep.memory.bind) return;
+    
+        // 获取绑定的另一个creep
+        const bindcreep = Game.getObjectById(creep.memory.bind) as Creep;
+        if(!bindcreep) {
+            delete creep.memory.bind;
+            return;
+        }
+    
+        if(double_attack_action.move(creep)) return;
+    
+        // 移动到目标房间.未到达房间不继续行动
+        if (creep.doubleMoveToRoom(creep.memory.targetRoom, '#ff0000')) return;
+        
+        if(double_attack_action.attack(creep)) return;
+    }
 }
 
 export default double_attack

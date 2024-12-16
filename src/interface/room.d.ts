@@ -31,6 +31,8 @@ interface Room {
     powerBank: StructurePowerBank[];
     /** 房间中的deposit数组 */
     deposit: StructureDeposit[];
+    /** 房间中的rampart数组 */
+    rampart: StructureRampart[];
     /** 房间等级 */
     level: number;
     /** 房间是否为自己所有 */
@@ -40,8 +42,6 @@ interface Room {
     init(): void;
     // 房间建筑缓存更新
     update(type?: StructureConstant): void;
-    // 房间运行
-    run(): void;
     
     // Creep数量检查
     CheckCreeps(): void;
@@ -52,7 +52,7 @@ interface Room {
     // 计算孵化所需能量
     CalculateEnergy(abilityList: any[]): number;
     // 计算角色孵化所需能量
-    CalculateRoleEnergy(role: string): number;
+    CalculateRoleEnergy(role: string, lv: number): number;
     // 主动防御
     activeDefend(): void;
     // 全部建筑工作
@@ -67,12 +67,20 @@ interface Room {
     getCreepNum(): { [role: string]: number };
     // 返回一个等级, 取决于spawn总容量
     getEffectiveRoomLevel(): number;
-    // 动态生成体型, 压缩形式
-    DynamicBodys(role): number[];
+    // 生成role体型, 压缩形式
+    GetRoleBodys(role,upbody?): number[];
     // 生成creep body
     GenerateBodys(abilityList: any[], role?: string): BodyPartConstant[];
+    // 给lab分配boost任务
+    AssignBoostTask(mineral: string, amount: number): void;
+    // 提交lab boost任务
+    SubmitBoostTask(mineral: string, amount: number): void;
+    // 取消lab boost任务
+    RemoveBoostTask(mineral: string): void;
     // 获取房间内最近的source
     closestSource(creep: Creep): Source;
+    // 检查spawn和tower是否需要补充能量
+    CheckSpawnAndTower(): boolean;
     // 自动按照预设布局建造建筑
     autoBuild(): void;
     // 自动市场交易

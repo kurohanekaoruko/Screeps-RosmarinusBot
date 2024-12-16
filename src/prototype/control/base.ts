@@ -1,26 +1,5 @@
 // 基础与杂项
 export default {
-    BotMem(...args: any[]): any {
-        let memory = Memory[global.BOT_NAME];
-        if(!memory) {
-            Memory[global.BOT_NAME] = {};
-            memory = Memory[global.BOT_NAME];
-        }
-        for(const arg of args) {
-            memory = memory[arg];
-            if(!memory) return undefined;
-        }
-        return memory;
-    },
-    removeBotMem(...args: any[]): OK | Error {
-        let memory = Memory[global.BOT_NAME];
-        for(let i = 0; i < args.length - 1; i++) {
-            memory = memory[args[i]];
-            if(!memory) return Error("Memory not found");
-        }
-        delete memory[args[args.length - 1]];
-        return OK;
-    },
     log(text: string, ...args: any[]): OK | Error {
         if (text[0] == '[') {
             console.log(`[${global.BOT_NAME}]${text}`, ...args);
@@ -50,5 +29,11 @@ export default {
         Memory['GenPixel'] = !Memory['GenPixel'];
         console.log(`搓Pixel功能已${Memory['GenPixel'] ? '开启' : '关闭'}`);
         return OK;
-    }
+    },
+    showRoomRes() {
+        return global.HelperRoomResource.showRoomRes();
+    },
+    showAllRes() {
+        return global.HelperRoomResource.showAllRes();   
+    },
 }

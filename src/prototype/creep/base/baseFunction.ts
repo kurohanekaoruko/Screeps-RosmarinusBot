@@ -9,7 +9,7 @@ export default class BaseFunction extends Creep {
         const updateTakeTarget = () => {
             if (this.memory.cache.takeTarget) return false;
 
-            const target = (pickup ? findDroppedResourceTarget(500) : null) ||
+            const target = (pickup ? findDroppedResourceTarget(Math.min(500, this.store.getFreeCapacity())) : null) ||
                            findStructureTarget() ||
                            findRuinTarget();
 
@@ -98,7 +98,8 @@ export default class BaseFunction extends Creep {
         const harvestEnergy = () => {
             if (this.room.level > 4) return false;
             if (!this.memory.cache.targetSourceId) {
-                const targetSource = this.room.source.find((source) => source.energy > 0);
+                const targetSources = this.room.source.filter((source) => source.energy > 0);
+                const targetSource = this.pos.findClosestByRange(targetSources);
                 if (targetSource) {
                     this.memory.cache.targetSourceId = targetSource.id;
                 } else return false;
@@ -124,9 +125,10 @@ export default class BaseFunction extends Creep {
     }
 
     /**
-     * 强化 creep
+     *boost creep
      * @param {Array<string>} boostTypes - 强化的资源类型数组
-     * @param {boolean} must - 是否必须强化
+     * @param {boolean} must - 是否必须boost
+     * @param {boolean} reserve - 是否为预定的boost
      * @returns {boolean} - 是否成功强化或结束强化
      */
     goBoost(boostTypes: Array<string>, must: boolean = false) {
@@ -134,21 +136,25 @@ export default class BaseFunction extends Creep {
         const allRequiredPartsAreBoosted = this.body.every(part => 
             !boostTypes.some(boostType => BOOSTS[part.type] && boostType in BOOSTS[part.type]) || part.boost
         );
+        // 所有需要强化的部件都已强化，返回true
         if (allRequiredPartsAreBoosted) {
-            return true;  // 所有需要强化的部件都已强化，返回true
+            return true;
         }
+        
         // 查找有足够指定资源的lab
-        const labs = this.room.lab.filter((lab) => 
+        const labs = this.room.lab?.filter((lab) => 
             lab.mineralType &&
             boostTypes.includes(lab.mineralType) &&
-            lab.store[lab.mineralType] >= 100
-        );
-        if(labs.length == 0) return !must;
+            lab.store[lab.mineralType] >= 30
+        ) || [];
+
         // 过滤掉对应部件已强化满的lab
         const availableLabs = labs.filter(lab => {
             return this.body.some(part => BOOSTS[part.type] && lab.mineralType in BOOSTS[part.type] && !part.boost);
-        });
-        if (availableLabs.length == 0) return !must;
+        }) || [];
+        if (availableLabs.length == 0) {
+            return !must;
+        }
 
         // 按照输入的优先级顺序选择lab
         const prioritizedLabs = availableLabs.sort((a, b) => {
@@ -170,7 +176,9 @@ export default class BaseFunction extends Creep {
         
         // 尝试强化
         let result = closestLab.boostCreep(this);
-        if (result == OK) return false;
+        if (result == OK) {
+            return false; // 强化成功，继续执行
+        }
         
         // 如果强化失败，重试多次后放弃
         if (!this.memory.boostAttempts) {

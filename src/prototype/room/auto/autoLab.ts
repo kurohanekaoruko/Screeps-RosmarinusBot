@@ -4,7 +4,7 @@ export default class AutoLab extends Room {
     autoLab() {
         if (Game.time % 50) return;
         if (!this.lab || !this.lab.length) return;
-        const botmem =  global.BotMem('structures', this.name);
+        const botmem =  Memory['StructControlData'][this.name];
 
         // 关停时不处理
         if (!botmem || !botmem.lab) return;
@@ -34,9 +34,9 @@ export default class AutoLab extends Room {
             (ResAmountCheck || LabMineralCheck)
         ) return;
 
-        // 达到限额就清空
-        if (amount > 0 && labProduct &&
-            this.getResourceAmount(labProduct) >= amount) {
+        // 对于有设置限额的, 则在关闭时清空任务
+        // 对于没有设置限额的, 则把任务信息保留到有足够原料
+        if (amount > 0 && labProduct) {
             botmem.labAtype = '';
             botmem.labBtype = '';
             botmem.labAmount = 0;
@@ -44,7 +44,7 @@ export default class AutoLab extends Room {
         // 如果没有限额, 并且找不到新任务, 那么任务会暂时保留
 
         // 获取自动任务列表
-        const autoLabMap = global.BotMem('autoLab', this.name);
+        const autoLabMap = Memory['AutoData']['AutoLabData'][this.name];
         if (!autoLabMap || !Object.keys(autoLabMap).length) return;
 
         // 查找未到达限额且原料足够的任务, 按优先级选择
@@ -65,7 +65,7 @@ export default class AutoLab extends Room {
         botmem.labBtype = LabMap[task]['raw2'];
         botmem.labAmount = autoLabMap[task];
 
-        global.log(`[${this.name}] 已自动分配lab合成任务: ${botmem.labAtype}/${botmem.labBtype}, 限额: ${autoLabMap[task] || '无'}`)
+        global.log(`[${this.name}] 已自动分配lab合成任务: ${botmem.labAtype}/${botmem.labBtype} -> ${REACTIONS[botmem.labAtype][botmem.labBtype]}, 限额: ${autoLabMap[task] || '无'}`)
         return OK;
     }
 }

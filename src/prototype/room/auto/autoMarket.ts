@@ -2,7 +2,7 @@ export default class AutoMarket extends Room {
     // 自动市场交易
     autoMarket() {
         if (Game.time % 50 !== 0) return;
-        const autoMaket = Memory[global.BOT_NAME]['autoMarket'][this.name];
+        const autoMaket = Memory['AutoData']['AutoMarketData'][this.name];
         if(!autoMaket) return;
         for(const item of autoMaket) {
             if(item.orderType == 'buy') {
@@ -33,7 +33,7 @@ function AutoBuy(roomName: string, item: any) {
     if (!terminal) return;
 
     const terminalAmount = (terminal.store[resourceType] || 0);
-    const storageAmount = (room.storage.store[resourceType] || 0);
+    const storageAmount = (room.storage?.store[resourceType] || 0);
 
     let totalAmount = 0;
     if (!storage || !terminal.pos.inRangeTo(storage, 2)) {

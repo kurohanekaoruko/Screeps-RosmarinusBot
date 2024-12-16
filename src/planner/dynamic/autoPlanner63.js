@@ -1508,7 +1508,7 @@ let pro={
 
 };
 
-module.exports = {
+export default {
     HelperVisual: helpervisual,
     ManagerPlanner: pro,
 }

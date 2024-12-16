@@ -1,6 +1,11 @@
 import { compress, decompress} from '@/utils';
 
 const upgrade = function (creep: Creep) {
+    if (creep.room.level == 8) {
+        creep.memory.role = 'builder';
+        return false;
+    }
+
     if (!creep.pos.inRangeTo(creep.room.controller, 3)) {
         creep.moveTo(creep.room.controller.pos, {
             visualizePathStyle: { stroke: '#ffffff' },
@@ -10,7 +15,7 @@ const upgrade = function (creep: Creep) {
     }
     if (creep.pos.inRangeTo(creep.room.controller, 3)) {
         creep.upgradeController(creep.room.controller)
-        const botMem = global.BotMem('rooms', creep.room.name);
+        const botMem = Memory['RoomControlData'][creep.room.name];
         const sign = botMem.sign ?? '';
         if(Game.time % 10 && creep.room.controller && (creep.room.controller.sign?.text ?? '') != sign) {
             if (creep.pos.inRangeTo(creep.room.controller, 1)) {
@@ -107,6 +112,10 @@ const SpeedUpgrader = {
     source: function (creep: Creep) {   // 获取能量
         if(!creep.memory.ready) return false;
         if(!creep.moveHomeRoom()) return;
+        if(!creep.memory.boosted) {
+            creep.memory.boosted = creep.goBoost(['XGH2O', 'GH2O', 'GH']);
+            return;
+        }
         if(creep.ticksToLive < 10 && creep.body.some(part => part.boost)) {
             if(creep.unboost()) creep.suicide();
             return false;
@@ -114,17 +123,25 @@ const SpeedUpgrader = {
         const link = creep.room.link.find(l => l.pos.inRangeTo(creep.room.controller, 2)) || null;
         const container = creep.room.container.find(l => l.pos.inRangeTo(creep.room.controller, 2)) ?? null;
         const terminal = [creep.room.terminal].find(l => l && l.pos.inRangeTo(creep.room.controller, 3)) ?? null;
-        const storage = [creep.room.storage].find(l => l && l.pos.inRangeTo(creep.room.controller, 3)) ?? null;
-        if (terminal || storage) {
-            const target = [terminal, storage].find(t => {
-                return t && t.store[RESOURCE_ENERGY] > 0 &&
-                    creep.room.lookForAtArea(LOOK_CREEPS, t.pos.y - 1, t.pos.x - 1, t.pos.y + 1, t.pos.x + 1, true).length < 8;
-            }) ?? null;
-            if (target) {
-                creep.withdrawOrMoveTo(target, RESOURCE_ENERGY);
-            } else {
-                creep.withdrawEnergy(false);
-            }
+        const storage = [creep.room.storage].find(l => l && l.pos.inRangeTo(creep.room.controller, 4)) ?? null;
+
+        if (terminal && terminal.store[RESOURCE_ENERGY] > 0 && creep.pos.isNearTo(terminal)) {
+            creep.withdrawOrMoveTo(terminal, RESOURCE_ENERGY)
+        }
+        else if (terminal && terminal.store[RESOURCE_ENERGY] > 0 &&
+            creep.room.lookForAtArea(LOOK_CREEPS,
+            terminal.pos.y - 1, terminal.pos.x - 1, terminal.pos.y + 1, terminal.pos.x + 1, true).length < 8
+        ) {
+            creep.withdrawOrMoveTo(terminal, RESOURCE_ENERGY)
+        }
+        else if (storage && storage.store[RESOURCE_ENERGY] > 0 && creep.pos.isNearTo(storage)) {
+            creep.withdrawOrMoveTo(storage, RESOURCE_ENERGY)
+        }
+        else if (storage && storage.store[RESOURCE_ENERGY] > 0 &&
+            creep.room.lookForAtArea(LOOK_CREEPS,
+            storage.pos.y - 1, storage.pos.x - 1, storage.pos.y + 1, storage.pos.x + 1, true).length < 8
+        ) {
+            creep.withdrawOrMoveTo(storage, RESOURCE_ENERGY)
         }
         else if (link && link.store[RESOURCE_ENERGY] > 0) {
             creep.withdrawOrMoveTo(link, RESOURCE_ENERGY);
@@ -132,9 +149,7 @@ const SpeedUpgrader = {
         else if(container && container.store[RESOURCE_ENERGY] > 0) {
             creep.withdrawOrMoveTo(container, RESOURCE_ENERGY);
         }
-        else {
-            creep.withdrawEnergy(false);
-        }
+        else creep.withdrawEnergy(!creep.room.storage&&!creep.room.terminal);
 
         if (creep.store.getFreeCapacity() === 0) {
             creep.say('⚡');

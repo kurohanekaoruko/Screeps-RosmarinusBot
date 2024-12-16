@@ -102,13 +102,18 @@ const withdraw = (creep) => {
         filter: r => r.resourceType !== RESOURCE_ENERGY || r.amount >= 200
     });
     if (droppedResource && !!creep.room.storage) {
+        memory.dropWithdraw = true;
         if (pos.inRangeTo(droppedResource, 1)) {
-            creep.pickup(droppedResource);
+            const result = creep.pickup(droppedResource);
+            if (result == OK && droppedResource.amount >= store.getFreeCapacity()) {
+                return true;
+            }
         } else {
             creep.moveTo(droppedResource, { visualizePathStyle: { stroke: '#ffaa00' } });
         }
         return;
     }
+    if (memory.dropWithdraw) memory.dropWithdraw = false;
 
     // 从建筑收集资源
     if (!memory.cache.targetId) {
@@ -127,9 +132,9 @@ const withdraw = (creep) => {
     }
     if (pos.inRangeTo(target, 1)) {
         const resourceType = creep.room.storage ? Object.keys(target.store)[0] : RESOURCE_ENERGY;
-        creep.withdraw(target, resourceType);
-        if (store.getFreeCapacity() === 0 || target.store.getFreeCapacity() === 0) {
-            delete memory.cache.targetId;
+        const result = creep.withdraw(target, resourceType);
+        if(result == OK && target.store[resourceType] >= store.getFreeCapacity()){
+            return true;
         }
     } else {
         creep.moveTo(target, { visualizePathStyle: { stroke: '#ffaa00' } });
@@ -147,7 +152,7 @@ const carry = (creep: any) => {
                                     c.pos.inRangeTo(creep.room.controller, 1));
         const controllerLink = creep.room.link.find((l: StructureLink) =>
                                     l.pos.inRangeTo(creep.room.controller, 2));
-        if (store[RESOURCE_ENERGY] > 0 && room.CheckSpawnAndTower()) {
+        if (!memory.dropWithdraw && store[RESOURCE_ENERGY] > 0 && room.CheckSpawnAndTower()) {
             const spawnExtensions = (room.spawn?.concat(room.extension) ?? [])
                         .filter((e: StructureExtension) => e?.store.getFreeCapacity(RESOURCE_ENERGY) > 0);
             target = creep.pos.findClosestByRange(spawnExtensions) || 
@@ -164,7 +169,7 @@ const carry = (creep: any) => {
                 memory.cache.resourceType = RESOURCE_ENERGY;
             }
         }
-        else if (!controllerLink && controllerContainer && store[RESOURCE_ENERGY] > 0 && controllerContainer.store.getFreeCapacity() > 0) {
+        else if (!memory.dropWithdraw && !controllerLink && controllerContainer && store[RESOURCE_ENERGY] > 0 && controllerContainer.store.getFreeCapacity() > 0) {
             memory.cache.targetId = controllerContainer.id;
             memory.cache.resourceType = RESOURCE_ENERGY;
         }
@@ -182,7 +187,13 @@ const carry = (creep: any) => {
             const isStorageOrTerminal = [STRUCTURE_STORAGE, STRUCTURE_TERMINAL].includes(target.structureType);
             const resourceType = isStorageOrTerminal ? Object.keys(store)[0] : RESOURCE_ENERGY;
             const result = creep.transfer(target, resourceType);
-            if (result === OK) delete memory.cache.targetId;
+            if (result === OK) {
+                delete memory.cache.targetId;
+                delete memory.cache.resourceType;
+                if (target.store.getFreeCapacity(resourceType) >= store[resourceType]) {
+                    return true;
+                }
+            }
         } else {
             creep.moveTo(target, { visualizePathStyle: { stroke: '#ffffff' } });
         }
@@ -194,14 +205,18 @@ const CarrierFunction = {
     source: (creep: any) => {
         if (!creep.moveHomeRoom()) return;
         if (checkAndFillNearbyExtensions(creep)) return;
-        withdraw(creep);
-        return creep.store.getFreeCapacity() === 0;
+        if  (creep.store.getFreeCapacity() === 0) {
+            return true;
+        }
+        return withdraw(creep);
     },
     target: (creep: any) => {
         if (!creep.moveHomeRoom()) return;
         if (checkAndFillNearbyExtensions(creep)) return;
-        carry(creep);
-        return creep.store.getUsedCapacity() === 0;
+        if  (creep.store.getUsedCapacity() === 0) {
+            return true;
+        }
+        return carry(creep);
     },
 };
 
